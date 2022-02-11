@@ -1,1 +1,1 @@
-# Firing signals
+# Recurrent Spiking Neural Networks
