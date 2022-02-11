@@ -1,0 +1,410 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% research.sty
+% Version started 01.10.2021
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ProvidesPackage{research}
+
+% \RequirePackage{amsfonts, amssymb, amsthm, amsopn}
+% \RequirePackage{amsmath}
+% %\RequirePackage[intlimits]{amsmath}
+% \RequirePackage{pifont}
+% \RequirePackage{mathrsfs}
+% \RequirePackage[retainorgcmds]{IEEEtrantools}
+% \RequirePackage{pstricks}
+\RequirePackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
+\RequirePackage[english]{babel}
+\RequirePackage{amsmath}
+\RequirePackage{amsthm}
+\RequirePackage{amssymb}
+\RequirePackage{mathtools}
+\RequirePackage{graphicx}
+\RequirePackage{tabularx}
+\RequirePackage{caption}
+\RequirePackage{subcaption}
+\RequirePackage{booktabs}
+
+
+%% Attention: To use mytextandeps the package ``epsfig'' is necessary
+%\RequirePackage{epsfig}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Page breaks within eqnarray and IEEEeqnarray
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% If LaTeX has to break an eqnarray it applies some penalty-points for
+% doing so, i.e., the higher the penalty, the less often it will
+% actually break an eqnarray. The penalty is defined by the counter
+% \interdisplaylinepenalty and can be set directly by:
+%
+%    \interdisplaylinepenalty=x 
+%
+% Indirectly one can use
+%
+%    \allowdisplaybreaks[z]
+%
+% where 
+% z=1 corresponds to x=9999
+% z=2 corresponds to x=6999
+% z=3 corresponds to x=2999
+% z=4 corresponds to x=0 (default)
+
+%\allowdisplaybreaks[3]
+\interdisplaylinepenalty=1000
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Temporarily save counter of enumerations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Usage:
+% 
+%% \begin{enumerate}
+%% \item bla
+%% \item bla
+%%   \saveenumi
+%% \end{enumerate}
+%% bla bla
+%% \begin{enumerate}
+%%   \loadenumi
+%% \item bla
+%% \item bla
+%% \end{enumerate}
+%
+% saveenumii is for saving the label of an enumerate-environment that
+% resides inside another enumerate-environment
+% \newcommand{\saveenumi}{\xdef\saveenumitmp{\arabic{enumi}}}
+% \newcommand{\loadenumi}{\setcounter{enumi}{\saveenumitmp}}
+% \newcommand{\saveenumii}{\xdef\saveenumitmp{\arabic{enumii}}}
+% \newcommand{\loadenumii}{\setcounter{enumii}{\saveenumitmp}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Label inside second level of enumerate-environment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% To set a label that only refers to an enumerate-environment that
+% resides inside another enumerate-environment, use \labelii{labelname}
+% instead of \label{labelname}. Use normal \ref{labelname} to refer to it.
+% \def\atauxout{\csname @auxout\endcsname}%
+% \def\labelii#1{\immediate\write\atauxout{%
+%     \noexpand\newlabel{#1}{{\theenumii}{\thepage}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Definitions for slides
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\vs}[1]{\vspace{\stretch{#1}}}
+\newcommand{\hs}[1]{\hspace{\stretch{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Definitions for addresses
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newcommand{\careof}{\raisebox{0.8ex}{\tiny
+%     c}\hspace{-0.5mm}/\hspace{-0.5mm}\raisebox{-0.3ex}{\tiny o} } 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% General abbreviations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+
+\renewcommand{\iff}{\Leftrightarrow}
+
+%%%%% Bold Greek letters %%%%%
+\newcommand{\bfalpha}{{\boldsymbol{\alpha}}}
+\newcommand{\bfbeta}{{\boldsymbol{\beta}}}
+\newcommand{\bfvarphi}{{\boldsymbol{\varphi}}}
+\newcommand{\bfphi}{{\boldsymbol{\phi}}}
+\newcommand{\bfzeta}{{\boldsymbol{\zeta}}}
+\newcommand{\bfpsi}{{\boldsymbol{\psi}}}
+\newcommand{\bfxi}{{\boldsymbol{\xi}}}
+\newcommand{\bfomega}{{\boldsymbol{\omega}}}
+\newcommand{\bfmu}{{\boldsymbol{\mu}}}
+\newcommand{\bfDelta}{\boldsymbol{\Delta}}
+\newcommand{\bfdelta}{\boldsymbol{\delta}}
+
+%%%%% Matrices and matrix operations %%%%%
+\setcounter{MaxMatrixCols}{20}
+\newcommand\coolover[2]{\mathrlap{\smash{\overbrace{\phantom{\begin{matrix} #2\end{matrix}}}^{\mbox{$#1$}}}}#2}
+\newcommand\coolunder[2]{\mathrlap{\smash{\underbrace{\phantom{\begin{matrix} #2\end{matrix}}}_{\mbox{$#1$}}}}#2}
+
+\renewcommand{\vec}[1]{\boldsymbol{#1}} %vector
+\newcommand{\hvec}[1]{\hat{\vect{#1}}} %vector with hat
+\newcommand{\mat}[1]{\boldsymbol{#1}} %matrix
+\newcommand{\hmat}[1]{\hat{\mat{#1}}} %matrix with hat
+\newcommand{\trans}[1]{#1^{\textnormal{\textsf{\tiny T}}}} %transpose  
+\newcommand{\inv}[1]{#1^{-1}} % inverse  
+\newcommand{\invtrans}[1]{#1^{-\textnormal{\textsf{\tiny T}}}} %transpose of inverse
+\newcommand{\abs}[1]{\left|#1\right|} % absolute value 
+\newcommand{\cconj}[1]{\overbar{#1}} %coponentwise conjugate (small) 
+\newcommand{\cmod}[1]{\left| #1 \right|}
+\newcommand{\carg}[1]{\textnormal{arg} \left(#1\right)}
+\newcommand{\comconj}[1]{#1^{*}} %componentwise conjugate 
+\newcommand{\hermi}[1]{#1^{\textnormal{H}}} %transpose and conjugate
+\newcommand{\invhermi}[1]{#1^{-\dagger}} %transpose and conjugate of inverse
+\newcommand{\trace}[1]{\operatorname{tr}\left(#1\right)} %trace
+\newcommand{\diag}[1]{\operatorname{diag}\left(#1\right)} %diagonal matrix
+\newcommand{\rank}[1]{\operatorname{rank}\left(#1\right)} %rank operator
+
+%%%%% Fields and Spaces %%%%%
+\newcommand{\Reals}{\mathbb{R}}      %the real numbers
+\newcommand{\Integers}{\mathbb{Z}}   %the integers
+\newcommand{\Rationals}{\mathbb{Q}}  %the rational numbers
+\newcommand{\Naturals}{\mathbb{N}}   %the natural numbers (without 0)
+\newcommand{\Nk}[1]{\{1, \dots, #1\}} %the set {1, ..., k}
+\newcommand{\Complexes}{\mathbb C}    %the complex numbers
+
+\newcommand{\Lone}[1]{L^{1}_{#1}(\Reals)} %discrete-time absolutely summable signals 
+\newcommand{\Ltwo}[1]{L^{2}_{#1}(\Reals)} %discrete-time square summable signals 
+\newcommand{\Linf}[1]{L^{\infty}_{#1}(\Reals)} %discrete-time bounded signals 
+\newcommand{\ellone}[1]{{\ell}^{1}_{#1}(\Integers)} %discrete-time absolutely summable signals 
+\newcommand{\elltwo}[1]{{\ell}^{2}_{#1}(\Integers)} %discrete-time square summable signals 
+\newcommand{\ellinf}[1]{{\ell}^{\infty}_{#1}(\Integers)} %discrete-time bounded signals 
+
+\newcommand{\ocomp}[1]{#1^{\bot}}
+
+%%%%% Real and Imaginary Parts of a Complex Number %%%%%
+\renewcommand{\Re}[1]{\textnormal{Re}\left\{#1\right\}}
+\renewcommand{\Im}[1]{\textnormal{Im}\left\{#1\right\}}
+
+%%%%% Inner Products and Norms %%%%%
+\newcommand{\bra}{\langle} %inner products 
+\newcommand{\ket}{\rangle} %inner products
+\newcommand{\inner}[2]{\left\langle{#1},{#2}\right\rangle}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\normtwo}[1]{\left\|#1\right\|_{2}}
+\newcommand{\normone}[1]{\left\|#1\right\|_{1}}
+\newcommand{\spn}[1]{\operatorname{span}\left(#1\right)}
+
+%%%%% Vector Operations %%%%%
+\newcommand{\vplus}{\mbox{\,\boldmath{\ensuremath{+}}\,}}
+\newcommand{\vminus}{\mbox{\,\boldmath{\ensuremath{-}}\,}}
+\newcommand{\vmult}{\mbox{\boldmath{\ensuremath{\cdot}}}}
+
+%%%%% Sets, cardinalities %%%%%
+\newcommand{\set}[1]{\mathcal{#1}} %set
+\newcommand{\cset}[1]{\mathcal{#1}^{\textnormal{c}}} % complement of set
+\newcommand{\symset}{\triangle}
+\newcommand{\card}[1]{\#{#1}}        %cardinality of a set.
+\newcommand{\brcard}[1]{\left(\#{#1}\right)} %cardinality of set inside of brackets
+\newcommand{\cardbr}[1]{\#\!\left({#1}\right)} %cardinality of a set with brackets
+\newcommand{\seq}[2]{\left\{#1_{k}\right\}_{k=1}^{#2}}
+
+%%%%% Communication Constants %%%%%
+\newcommand{\const}[1]{\textnormal{\usefont{T1}{bc9}{r}{r}\selectfont #1}}
+\newcommand{\Eb}{\mathcal{E}_{\textnormal{b}}} %Energy per bit
+%\newcommand{\Es}{\mathcal{E}_{\textnormal{s}}} %Energy per symbol
+\newcommand{\Es}{\mathcal{E}} %Energy per symbol
+\newcommand{\EE}{\mathcal{E}} %Energy
+\newcommand{\Ez}{\mathcal{E}_{0}} %Unit Energy
+\newcommand{\Nzero}{\const{N}_{0}} %Single-sided noise spectrum; N_{0}/2 double-sided. 
+\newcommand{\ebnofr}{\frac{\Eb}{\Nzero}}
+\newcommand{\ebno}{\Eb/\Nzero}
+\newcommand{\SNR}{\textnormal{SNR}}
+\newcommand{\SNRnorm}{\textnormal{SNR}_{\textnormal{norm}}}
+\newcommand{\Pb}{P_{\textnormal{b}}}
+\newcommand{\PB}{P_{\textnormal{B}}}
+\newcommand{\PS}{P_{\textnormal{S}}}
+\newcommand{\Lt}{\const{L}_{\textnormal{t}}}
+\newcommand{\Hleaf}{H_{\textnormal{leaf}}}
+\newcommand{\Hb}{H_{\textnormal{b}}}
+\newcommand{\nt}{n_{\textnormal{T}}}
+\newcommand{\nr}{n_{\textnormal{R}}}
+\newcommand{\amp}{\const{A}}
+\newcommand{\PP}{\const{P}}
+\newcommand{\code}{\mathcal{C}} %code
+\newcommand{\bit}{\textnormal{ bit}}
+\newcommand{\bits}{\textnormal{ bits}}
+\newcommand{\error}{\textnormal{error}}
+
+%%%%% Probability, Expectation, Variance %%%%%
+\newcommand{\iid}{\overset{i.i.d}{\sim}}
+
+\newcommand{\QuadraticConvergence}[1]{\underset{#1}{\overset{L^2}{\longrightarrow}}}
+\newcommand{\asconv}{\overset{a.s.}{\longrightarrow}}
+\newcommand{\DistributionConvergence}[1]{\underset{#1}{\overset{F}{\longrightarrow}}}
+
+\renewcommand{\Pr}[1]{\mathbb{P} \!\left(\left\{#1\right\}\right)}
+\newcommand{\Prcond}[2]{\mathbb{P} \!\left(\left\{#1\right\} | \left\{#2\right\}\right)}
+\newcommand{\E}[1]{\mathbb{E}\!\left({#1}\right)} %expectation
+\newcommand{\Econd}[2]{\mathbb{E}\!\left(\left.{#1}\right|{#2}\right)} %expectation
+\newcommand{\Var}[1]{\textnormal{\textsf{Var}}\!\left({#1}\right)} %variance
+\newcommand{\Varcond}[2]{\textnormal{\textsf{Var}}\!\left({#1}\left|{#2}\right.\right)} %expectation
+
+
+
+\newcommand{\Prs}[1]{\,\mathbb{P}\!\left(#1\right)} %usage:
+                                %Pr({w: X(w) \leq 5}) or Pr(A) for an event \set{A}
+\newcommand{\Prv}[1]{\,\textnormal{Pr}\!\left[#1\right]} %usage: Pr[X \leq 5]
+\newcommand{\Prscond}[2]{\,\textnormal{Pr}\!\left(\left.#1\,\right|\,#2\right)} %cond. prob.
+\newcommand{\Prscondd}[2]{\,\textnormal{Pr}\!\left(#1\,\left|\,#2\right.\right)} %cond. prob. (conditioned argument is larger)
+\newcommand{\Prvcond}[2]{\,\textnormal{Pr}\!\left[\left.#1\,\right|\,#2\right]} %cond. prob.
+\newcommand{\Prvcondd}[2]{\,\textnormal{Pr}\!\left[#1\,\left|\,#2\right]} %cond. prob. (conditioned argument is larger)
+\newcommand{\Econdd}[3][]{\textnormal{\textsf{E}}_{#1}\!\left[#2\,\left|\,#3\right.\right]} %conditional expectation (conditioned argument is larger)
+\newcommand{\Varsmall}[1]{\textnormal{\textsf{Var}}\left({#1}\right)} %variance
+\newcommand{\Co}[1]{\textnormal{\textsf{Cov}}\!\left({#1}\right)} %covariance
+\newcommand{\Cov}[2]{\textnormal{\textsf{Cov}}\!\left[{#1},{#2}\right]} %covariance
+\newcommand{\cov}[1]{\mat{K}_{\!#1\!#1}} %covariance, usually of a process
+\newcommand{\autocorr}[2]{\mat{K}_{\!#1\!#1}\!\left(#2\right)} % autocorrelation function
+
+\newcommand{\autosim}[1]{\mat{R}{\!#1\!#1}} % autosimilarity of deterministic signal
+\newcommand{\conjautosim}[1]{\conj{\mat{R}}{\!#1\!#1}} % conjugated autosimilarity of 
+                                                      %deterministic signal
+\newcommand{\Fourautosim}[1]{\Four{\mat{R}}{\!#1\!#1}} % Fourier of autosimilarity of 
+                                                      %deterministic signal
+
+\newcommand{\spec}[1]{S_{\!#1\!#1}} %spectrum of a process
+\newcommand{\PSD}[2]{S_{\!#1\!#1}\!\left(#2\right)} %power spectral density
+
+\newcommand{\tvdist}[1]{\norm{#1}_{\textnormal{TV}}} %power spectral density
+
+%%%%% Distributions %%%%%
+\newcommand{\Normal}[2]{\mathcal{N}\!\left({#1},{#2}\right)} %Normal dist.
+\newcommand{\NormalC}[2]{\mathcal{N}_{\Complex}\!\left({#1},{#2}\right)}
+\newcommand{\NormalR}[2]{\mathcal{N}_{\Reals}\left(#1,#2\right)}
+\newcommand{\Uniform}[1]{\mathcal{U}\left(#1\right)}  %Uniform dist.
+\newcommand{\Poisson}[1]{\mathcal{P}\left(#1\right)} %Poisson dist.
+\newcommand{\Exponential}[1]{\mathcal{E}\left(#1\right)} %Poisson dist.
+\newcommand{\Uh}[1][]{\hat{U}_{#1}} %Uniform over the sphere |z|=1
+\newcommand{\Ber}[1]{Ber\left(#1\right)}
+\newcommand{\U}[1][]{e^{i\Theta_{#1}}} %Uniform over the sphere |z|=1
+
+%%%%% Statistical Operators %%%%%
+\newcommand{\eqlaw}{\stackrel{\mathscr{\scriptscriptstyle L}}{=}} %equivalence in prob. law
+\newcommand{\indep}{\mathrel\bot\joinrel\mspace{-8mu}\mathrel\bot}  %independent
+\newcommand{\dep}{\not \indep} %X and Y dependent 
+\newcommand{\markov}{\textnormal{\mbox{$\multimap\hspace{-0.73ex}-\hspace{-2ex}-$}}}
+%\newcommand{\markov}{\textnormal{\mbox{$\multimap\hspace{-1.00ex}\multimapinv$}}}
+%%(\Requirepackage{txfonts} needed)
+\newcommand{\geqst}{\geq^{\textrm{st}}} %stochastically larger or equal
+\newcommand{\gst}{>^{\textrm{st}}} %stochastically larger
+
+%%%%% Special functions %%%%%
+\newcommand{\Ei}[1]{\operatorname{Ei}\!\left(#1\right)}
+\newcommand{\Qf}[1]{\mathcal{Q}\left(#1\right)} 
+\newcommand{\erf}[1]{\textnormal{erf}\left({#1}\right)}
+\newcommand{\erfc}[1]{\textnormal{erfc}\left({#1}\right)}
+\newcommand{\sinc}{\operatorname{sinc}}
+\newcommand{\rect}{\operatorname{rect}}
+\newcommand{\sgn}{\operatorname{sgn}}
+\newcommand{\ind}[1]{\mathbb{I}_{\{#1\}}}
+
+%%%%% Various Mathematical %%%%%
+\renewcommand{\d}{\textnormal{d}} %d in integrals and differentiation
+\newcommand{\dd}[2]{\frac{\textnormal{d}#1}{\textnormal{d}#2}} %d in integrals and differentiation
+\newcommand{\intinf}{\int_{-\infty}^{\infty}}
+\newcommand{\ii}{\mathsf{i}} %square root of -1.
+\newcommand{\eqdef}{\triangleq} % definition
+\newcommand{\lcm}{\textnormal{lcm}} % least common multiple
+
+\newcommand{\Fourier}[1]{\hat{#1}}
+\newcommand{\FourierTrans}[1]{\mathcal{F}\left\{#1\right\}}
+\newcommand{\InvFourierTrans}[1]{\inv{\mathcal{F}}\left\{#1\right\}}
+\newcommand{\LaplaceTrans}[1]{\mathcal{L}\left\{#1\right\}}
+\newcommand{\InvLaplaceTrans}[1]{\inv{\mathcal{L}}\left\{#1\right\}}
+\newcommand{\ZTrans}[1]{\mathcal{Z}\left\{#1\right\}}
+\newcommand{\InvZTrans}[1]{\inv{\mathcal{Z}}\left\{#1\right\}}
+\newcommand{\conv}[2]{#1 * #2}
+\newcommand{\cconv}[2]{#1 \circledast #2}
+\newcommand{\supp}{\textnormal{supp}}
+\newcommand{\ord}{\textnormal{ord}}
+\renewcommand{\mod}[1]{\textnormal{ mod } #1}
+% \newcommand{\omod}[2]{\ \textnormal{mod}(#1, #2)}
+\newcommand{\argmin}{\operatorname*{argmin}}
+\newcommand{\argmax}{\operatorname*{argmax}}
+\newcommand{\frev}[1]{{#1}^\textnormal{r}} % reverse of function
+\newcommand{\fconj}[1]{{#1}^\textnormal{c}} % conjugate of function
+\newcommand{\ROC}[1]{\textnormal{ROC}(#1)} % conjugate of function
+\newcommand{\eval}[2]{\left.#1\right|_{#2}} % conjugate of function
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+
+
+
+
+%%%%% Futher abbreviations %%%%%
+\newcommand{\eps}{\epsilon} %shorthand for epsilon
+\newcommand{\veps}{\varepsilon}
+
+%% Messages (Message Passing)
+\makeatletter
+\DeclareFontFamily{U}{MnSymbolA}{}
+\DeclareSymbolFont{MnSyA}{U}{MnSymbolA}{m}{n}
+\DeclareFontShape{U}{MnSymbolA}{m}{n}{
+<-6> MnSymbolA5
+<6-7> MnSymbolA6
+<7-8> MnSymbolA7
+<8-9> MnSymbolA8
+<9-10> MnSymbolA9
+<10-12> MnSymbolA10
+<12-> MnSymbolA12}{}
+\DeclareMathSymbol{\smallrightarrow}{\mathrel}{MnSyA}{0}
+\DeclareMathSymbol{\smallleftarrow}{\mathrel}{MnSyA}{2}
+\DeclareMathSymbol{\smallleftrightarrow}{\mathrel}{MnSyA}{16}
+\newcommand{\smallrightarrowfill@}{\arrowfill@\relbar\relbar\smallrightarrow}
+\newcommand{\smallleftarrowfill@}{\arrowfill@\smallleftarrow\relbar\relbar}
+\newcommand{\smallleftrightarrowfill@}
+{\arrowfill@\smallleftarrow\relbar\smallrightarrow}
+\renewcommand{\overrightarrow}{\mathpalette{\overarrow@\smallrightarrowfill@}}
+\renewcommand{\overleftarrow}{\mathpalette{\overarrow@\smallleftarrowfill@}}
+\renewcommand{\overleftrightarrow}
+{\mathpalette{\overarrow@\smallleftrightarrowfill@}}
+\makeatother
+%%
+\providecommand{\msgf}[2]{\protect\overrightarrow{#1}_{\mspace{-3mu}#2}} % Forward Message
+\providecommand{\msgb}[2]{\protect\overleftarrow{#1}_{\mspace{-3mu}#2}} % Backward Message
+\providecommand{\msgfb}[2]{\protect\overleftrightarrow{#1}_{\mspace{-3mu}#2}}
+
+\newcommand{\connectionDot}{\circle*{1}}
+\newcommand{\markerDot}{\circle*{1}}
+
+\newcommand{\knownBox}{\cent{\rule{1.75\unitlength}{1.75\unitlength}}}
+
+\newcommand{\plusSign}{%
+\begin{picture}(0,0)(0,0)
+\put(0,0){\circle{4}}
+\put(-1,0){\line(1,0){2}}
+\put(0,-1){\line(0,1){2}}
+\end{picture}
+}
+
+\newcommand{\minusSign}{%
+\begin{picture}(0,0)(0,0)
+\put(-1,0){\line(1,0){2}}
+\end{picture}
+}
+
+\newcommand{\timesCross}{%
+  \begin{picture}(0,0)(0,0)
+  \drawline(-1.5,-1.5)(1.5,1.5)
+  \drawline(-1.5,1.5)(1.5,-1.5)
+  \end{picture}
+}
+
+%\newcommand{\threshold}{%
+%   \begin{picture}(0,0)(0,0)
+%     \thinlines
+%     \put(-2.5,0){\line(1,0){5}}
+%     \put(0,-2.5){\line(0,1){5}}
+%     \thicklines
+%     \put(0,-1.5){\line(-1,0){2.2}}
+%     \put(0,-1.5){\line(0,1){3}}
+%     \put(0,1.5){\line(1,0){2.2}}
+%   \end{picture}
+%}
+%
+%\newcommand{\softThreshold}{%
+%   \begin{picture}(0,0)(0,0)
+%     \thinlines
+%     \put(-2.5,0){\line(1,0){5}}
+%     \put(0,-2.5){\line(0,1){5}}
+%     \thicklines
+%     \qbezier(0,0)(0.3,1.5)(2.2,1.5)
+%     \qbezier(0,0)(-0.3,-1.5)(-2.2,-1.5)
+%   \end{picture}
+%}
+
+
+%remark while editing
+\newcommand{\rem}[1]{{\color{red} {#1}}}
+
+\newcommand{\Ident}{\mathbbm{1}}
+\newcommand{\cond}{\hspace{0.02em}|\hspace{0.08em}}
+

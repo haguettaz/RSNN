@@ -1,0 +1,13 @@
+seaborn<0.12
+matplotlib<3.5
+numpy<1.21
+pandas<1.4
+scipy<1.8
+
+[tests]
+black==19.10b0
+isort[pyproject,requirements]==4.3.21
+pre-commit<2.1
+pylint<2.6,>=2.5
+pylint-fail-under<0.4
+Sphinx<2.5

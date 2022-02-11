@@ -1,0 +1,177 @@
+\documentclass{article}
+\usepackage[a4paper, total={6in, 9in}]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{research}
+\usepackage[english]{babel}
+\usepackage{tikz} 
+\usepackage{IEEEtrantools}
+
+
+\title{Encrypted transmission}
+\author{Hugo Aguettaz}
+\begin{document}
+\maketitle
+    \tikzstyle{st0} = [draw, fill=black, rectangle, minimum width=3mm, minimum height = 3mm]
+    \tikzstyle{st1} = [draw, rectangle, minimum width=5mm, minimum height=5mm]
+    \tikzstyle{st2} = [draw, rectangle, inner sep=0pt, minimum height=0mm, minimum width=0mm] 
+
+    In this paper, we present a new method to transmit sensitive message from an emitter to a receptor. The input to the algorithm is a binary message $\vec{m}$ to transmit. We will first consider single channel transmission and investigate some properties of the method. Then, we will discuss a multi-channels extension.
+
+    \section{Single-Channel Protected Transmission}
+
+    In this setting, the message is only transmitted through one channel $\tilde{n}$, i.e., one neuron, whereas the other channels does not contain any relevant information but are necessary to give enough energy to the system. Let $\vec{m}$ be the binary message to transmit from the source to the target. 
+    
+    With $T_r > 0$, $\vec{m}$ is not necessary a valid firing sequence. Thus, we first have to make it valid by adding $T_r$ zeros after each one, i.e., $\vec{m} \mapsto \vec{\tilde{m}} \in \tilde{\mathcal{Y}}^{L_m}_{T_r}$.
+
+    Then we have to generate a random key $k$ of length $L_k$, that will be used to stimulate the RSNN and recover the message. This is done in two independent stages:
+    \begin{enumerate}
+        \item We uniformly sample $N-1$ firing signals $\vec{y}_{n} \in \mathcal{Y}^{L_k + L_m}_{T_r}$, for all $n \neq \tilde{n}$.
+        \item We uniformly sample a stimulus $\tilde{u} \in \{0, 1\}^{L_k}$ for the $\tilde{n}$-th channel, such that the concatenation $\tilde{u} \mathbin\Vert \tilde{m}$ is a valid sequence in $\mathcal{Y}^{L_k + L_m}_{T_r}$
+    \end{enumerate}
+
+    \subsection{Stage 1}
+
+    Stage 1 can be done easily by backward filtering forward sampling as presented before. 
+    
+    \subsection{Stage 2}
+    
+    For stage 2, the algorithm has to be adapted a little bit. For reasons that would be evident in a while, we should further assume that $L_k \geq T_r$. The objective here is too uniformly sample a binary sequence $(x_1, \dots, x_{L_k}) \in \{0, 1\}^{L_k}$ under the condition that $(x_1, \dots, x_{L_k}, x_{L_k + 1}, \dots, x_{L_k + L_m}) \in \mathcal{Y}^L_{T_r}$, with $L = L_k + L_m$ and where $(x_{L_k + 1}, \dots, x_{L_k + L_m})$ is fixed. Moreover, one could also notice that $x_k$ is independent of $x_{k'}$ for every $k'$ which is not at least $T_r$ closed to $k$. Thus, with fixed $(x_{L_k + 1}, \dots, x_{L_k + L_m})$, it is suffice to focus on the binary sequence $(x_{L - T_r + 1}, \dots, x_{L}, x_1, \dots x_{L_k}, \dots x_{L_k + T_r + 1})$ of length $L_k + 2 T_r$.
+
+    Let $Z_k = (X_{k-T_r+1}, \dots, X_{k}) \in \{0,1\}^{T_r}$ with $k = 1, \dots, L_k + T_r + 1$ and indices taken modulo $L$ be a Markov chain. Using the constraint functions
+    \begin{IEEEeqnarray}{rCl}  
+      g_{k-1,k}(z_{k-1}, z_{k}) &=&
+      \begin{cases}
+          1 & \mbox{if } (x_{k-T_r}, \dots, x_{k}) \in \mathcal{Y}_{T_r}^{T_r + 1}\\
+          0 & \mbox{otherwise} \\
+    \end{cases}
+    \end{IEEEeqnarray}
+    we can represent the problem setting as the factor graph of \Cref{fig:factor_graph_fix}.
+
+    \begin{figure}[!ht]
+        \centering
+        \begin{tikzpicture}[node distance={20mm}] 
+        \node[st0] (1) [label=below:$\breve{z}_{L}$] {}; 
+        \node[st1] (2) [right of=1] [label=below:$g_{L,1}$] {}; 
+        \node[st1] (3) [right of=2] {}; 
+        \node (4) [right of=3] {$\dots$}; 
+        \node[st1] (5) [right of=4] {}; 
+        \node[st1] (6) [right of=5] [label=below:$g_{L_k + T_r, L_k + T_r + 1}$] {}; 
+        \node[st0] (7) [right of=6] [label=below:$\breve{z}_{L_k + T_r + 1}$] {}; 
+        \draw (1) -- node[above] {$Z_{L}$} (2);
+        \draw (2) -- node[above] {$Z_1$} (3);
+        \draw (3) -- (4);
+        \draw (4) -- (5);
+        \draw (5) -- node[above] {$Z_{L_k + T_r}$} (6);
+        \draw (6) -- node[above] {$Z_{L_k + T_r + 1}$} (7);
+        \end{tikzpicture}
+        \caption{Factor graph with boundary conditions} \label{fig:factor_graph_fix}
+      \end{figure}
+
+
+    The backward filtering pass is done by sum-product message passing as illustrated \Cref{fig:backward}. Starting with the message
+    \begin{IEEEeqnarray}{rCl}
+      \msgb{\mu}{Z_{L_k + T_r+ 1}}(z_{L_k + T_r + 1}) &=& 
+      \begin{cases}
+          1 & \mbox{if } z_{L_k + T_r + 1} = \breve{z}_{L_k + T_r + 1}\\
+          0 & \mbox{otherwise} \\
+      \end{cases}
+    \end{IEEEeqnarray}
+    we can recursively compute all backward messages, from right to left using:
+    \begin{IEEEeqnarray}{rCl}
+      \msgb{\mu}{Z_{k-1}}(z_{k-1}) &=& \sum_{z_{k}} g_{k-1, k}(z_{k-1}, z_{k}) \msgb{\mu}{Z_{k}}(z_{k}), \quad k \in \{1, \dots, L_k + T_r + 1\}.
+    \end{IEEEeqnarray}
+    
+    It can also be expressed in matrix form as
+    \begin{equation}
+      \mat{\msgb{\mu}{Z_{k-1}}} = \mat{\msgb{\mu}{Z_{k}}} \mat{A}
+    \end{equation}
+    with 
+    \begin{equation}
+      \left\{\mat{\msgb{\mu}{Z_{k}}}\right\}_{i_{z_k}} = \msgb{\mu}{Z_{k}}(z_{k})
+    \end{equation}
+    for $i_{z_k} \in \Nk{T_r + 1}$ and
+    \begin{equation}
+      z_k = \vec{0} \mapsto i_{z_k} = 1
+    \end{equation}
+    \begin{equation}
+      z_k = \vec{e_{i}} \mapsto i_{z_k} = i + 1
+    \end{equation}
+
+    and with
+    \begin{equation}
+      \mat{A} = 
+      \begin{bmatrix}
+        1 & 1 & 0 & \cdots & 0 \\
+        0 & 0 & 1 & \ddots & \vdots \\
+        \vdots & \vdots & \ddots & \ddots & 0 \\
+        0 & 0 & \cdots & 0 & 1 \\
+        1 & 0 & \cdots & 0 & 0 \\
+      \end{bmatrix} \in \{0, 1\}^{T_r + 1 \times T_r + 1}.
+    \end{equation}
+
+    \begin{figure}[!ht]
+        \centering
+        \begin{tikzpicture}[node distance={20mm}] 
+        \node[st0] (1) [label=below:$\breve{z}_{L}$] {}; 
+        \node[st1] (2) [right of=1] [label=below:$g_{L,1}$] {}; 
+        \node[st1] (3) [right of=2] {}; 
+        \node (4) [right of=3] {$\dots$}; 
+        \node[st1] (5) [right of=4] {}; 
+        \node[st1] (6) [right of=5] [label=below:$g_{T_r + T, T_r + T + 1}$] {}; 
+        \node[st0] (7) [right of=6] [label=below:$\breve{z}_{T_r + T + 1}$] {}; 
+        \draw[<-, thick, red] (1) -- node[above] {$\msgb{\mu}{Z_L}$} (2);
+        \draw[<-, thick, red] (2) -- node[above] {$\msgb{\mu}{Z_1}$} (3);
+        \draw (3) -- (4);
+        \draw (4) -- (5);
+        \draw[<-, thick, red] (5) -- node[above] {$\msgb{\mu}{Z_{T_r + T}}$} (6);
+        \draw[<-, thick, red] (6) -- node[above] {$\msgb{\mu}{Z_{T_r + T + 1}}$} (7);
+        \end{tikzpicture}
+        \caption{Backward filtering} \label{fig:backward}
+    \end{figure}
+
+    The forward sampling is finally done as shown in \Cref{fig:forward}. We sample $z_k$ for $k \in \{1, \dots, L_k\}$ according to:
+    \begin{IEEEeqnarray}{rCl}
+      p(z_k | z_{k-1}) & = & \frac{p(z_k, z_{k-1})}{p(z_{k-1})} \\
+      & = &\frac{g_{k-1,k}(z_{k-1}, z_{k}) \msgf{\mu}{Z_{k-1}}(z_{k-1}) \msgb{\mu}{Z_{k}}(z_{k})}{\msgf{\mu}{Z_{k-1}}(z_{k-1}) \msgb{\mu}{Z_{k-1}}(z_{k-1})} \\
+      & = &\frac{g_{k-1,k}(z_{k-1}, z_{k}) \msgb{\mu}{Z_{k}}(z_{k})}{\msgb{\mu}{Z_{k-1}}(z_{k-1})},
+    \end{IEEEeqnarray}
+
+    Again, this can be expressed in the matrix form
+    \begin{IEEEeqnarray}{rCl}
+        \mat{p_{Z_{k}|Z_{k-1}}} = \left\{\mat{\msgb{\mu}{Z_{k-1}}}\right\}_{i_{z_{k-1}}}^{-1} \mat{\msgb{\mu}{Z_{k}}} \mat{A}_{:, i_{\breve{z}_{k-1}}}.
+    \end{IEEEeqnarray}
+
+    \begin{figure}[!ht]
+      \centering
+      \begin{tikzpicture}[node distance={15mm}, main/.style = {draw, rectangle, minimum width=5mm, minimum height = 5mm}] 
+        \node[st0] (1) [label=below:$\breve{z}_{L}$] {}; 
+        \node[st2] (12) [right of=1] {}; 
+        \node[st1] (2) [right of=12] [label=below:$g_{L,1}$] {}; 
+        \node[st2] (23) [right of=2] {}; 
+        \node[st1] (3) [right of=23] {}; 
+        \node (4) [right of=3] {$\dots$}; 
+        \node[st1] (5) [right of=4] {}; 
+        \node[st2] (56) [right of=5] {}; 
+        \node[st1] (6) [right of=56] [label=below:$g_{T_r + T, T_r + T + 1}$] {}; 
+        \draw[->, thick, blue] (1) -- node[above] {$\msgf{\mu}{Z_L}$} (12);
+        \draw[<-, thick, red] (12) -- node[above] {$\msgb{\mu}{Z_L}$} (2);      
+        \draw[->, thick, blue] (2) -- node[above] {$\msgf{\mu}{Z_1}$} (23);
+        \draw[<-, thick, red] (23) -- node[above] {$\msgb{\mu}{Z_1}$} (3);
+        \draw (3) -- (4);
+        \draw (4) -- (5);
+        \draw[->, thick, blue] (5) -- node[above] {$\msgf{\mu}{Z_{T_r + T}}$} (56);
+        \draw[<-, thick, red] (56) -- node[above] {$\msgb{\mu}{Z_{T_r + T}}$} (6);      
+      \end{tikzpicture}
+      \caption{Forward sampling} \label{fig:forward}
+    \end{figure}
+    
+    
+
+    %----------------------------------------------------------------------------------------
+    \newpage
+    \appendix
+
+
+
+\end{document}
+

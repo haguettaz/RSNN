@@ -1,0 +1,117 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage{research}
+\usepackage{IEEEtrantools}
+\usepackage{ragged2e}
+\usepackage[mode=buildnew]{standalone}% requires -shell-escape
+\usepackage{tikz}
+\usepackage{wrapfig}
+
+\usetikzlibrary{arrows,automata,positioning}
+
+
+\usetheme{Copenhagen}
+
+\beamertemplatenavigationsymbolsempty
+\addtobeamertemplate{navigation symbols}{}{%
+    \usebeamerfont{footline}%
+    \usebeamercolor[fg]{footline}%
+    \hspace{1em}%
+    \insertframenumber/\inserttotalframenumber
+}
+
+\title{On Firing Signals}
+\author{Hugo Aguettaz}
+\institute{Institut für Signal- und Informationsverarbeitung\\ETH Zürich}
+\date{\today}
+
+\begin{document}
+	\begin{frame}
+		\titlepage
+	\end{frame} 
+
+	\begin{frame}{Outline}
+		\tableofcontents
+	\end{frame}
+
+	\section{Introduction}
+	\begin{frame}
+		\sectionpage
+	\end{frame}
+
+	\begin{frame}{Firing sequences}
+		\justifying
+		\begin{definition}[Firing sequence]
+			\justifying
+			A binary sequence of length $L$ is a firing sequence if and only if there at least $T_r$ 0s between any two consecutive 1s, and considering periodic boundaries.
+		\end{definition}
+
+		We denote by $\set{F}$ the set of all firing sequences of length $L$ and refractory period $T_r$ (with implicit $L$ and $T_r$).
+
+		\begin{example}
+			\justifying
+			With $L = 10$ and $T_r = 2$, $(0, 0, 1, 0, 0, 0, 0, 1, 0, 0)$ is a firing signal but $(0, 0, 1, 0, 1, 0, 0, 0, 1, 0)$ and $(1, 0, 0, 1, 0, 0, 0, 0, 1, 0)$ are not.
+		\end{example}
+	\end{frame}
+
+	\begin{frame}{Firing sequences}{Cardinality}
+		\justifying
+		\begin{theorem}[Cardinality]
+			\justifying
+			Assume $T_r > 0$ and let $\ell_{T_r}^{L}$ denotes the number of firing signals of length $L$ and refractory period $T_r$. Then:
+			\begin{equation*}
+				\ell_{T_r}^{L} = 
+				\begin{cases}
+					1 &  1 \leq L \leq T_r \\
+					L+1 & T_r + 1 \leq L \leq 2T_r \\
+					\sum_{i=1}^{T_r + 1} \frac{\varphi_{T_r + 1, i}^{T_r + 1 + L}}
+					{\varphi_{T_r + 1, i}^{T_r + 1} + T_r} - 2T_r^2 + L T_r 
+					& 2T_r + 1 \leq L \leq 3T_r + 1 \\
+					\sum_{i=1}^{T_r + 1} \varphi_{T_r + 1, i}^L
+					& L > 3T_r + 1 \\
+				\end{cases},
+			\end{equation*}
+			where $\varphi_{p, i}, i=1,...,p$ denotes the roots of the polynomials $x^p - x^{p-1} - 1$ with $p \geq 2$.
+		  \end{theorem}
+	\end{frame}
+
+	\begin{frame}{Firing sequences}{Reasonable}
+		\justifying
+		\begin{definition}[Reasonable firing sequence]
+			\justifying
+			A firing sequence $(x_1, \dots, x_L)$ is said to be \emph{$T_h$-reasonable} if for any $i \in \{1, \dots, L\}$, $x_i$ is fully determined by $(x_{i-T_h}, \dots, x_{i-1})$.
+		\end{definition}
+
+		\begin{example}
+			\justifying
+			With $T_h= 4$ $(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)$ and $(1, 0, 0, 0, 0, 1, 0, 0, 0, 0)$ are $T_h$-reasonable but $(0, 1, 0, 0, 0, 1, 0, 0, 1, 0)$ is not.
+		\end{example}
+	\end{frame}
+
+	\begin{frame}{Firing sequences}{Autonomous (energy)}
+		\justifying
+		\begin{definition}[Autonomous firing sequence]
+			\justifying
+			A firing sequence $(x_1, \dots, x_L)$ is said to be \emph{$T_h$-autonomous} if for any $1 \leq i \leq L$ such that $x_i = \dots = x_{i+T_h} = 0$, $x_{i+T_h + 1} = 0$.
+		\end{definition}
+
+		\begin{example}
+			\justifying
+			With $T_h= 4$, $(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)$ and $(0, 1, 0, 0, 0, 1, 0, 0, 1, 0)$ are $T_h$-autonomous but $(1, 0, 0, 0, 0, 1, 0, 0, 0, 0)$ is not.
+		\end{example}
+	\end{frame}
+
+	\begin{frame}{Firing sequences}{Reducible}
+		\justifying
+		\begin{definition}[Reducible firing sequence]
+			\justifying
+			A firing sequence $(x_1, \dots, x_L)$ is said to be \emph{reducible} (with order $d$) if for any $1 \leq i \leq L$ $x_{i+kT} = x_{i}$ with $T = L/d$ and $d$ as large as possible.
+		\end{definition}
+
+		\begin{example}
+			\justifying
+			$(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)$ and $(1, 0, 0, 0, 0, 1, 0, 0, 0, 0)$ are reducible with orders $d=6$ and $d=2$ respectively.
+		\end{example}
+	\end{frame}
+
+\end{document}

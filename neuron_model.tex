@@ -1,0 +1,112 @@
+\documentclass{article}
+\usepackage[a4paper, total={6in, 9in}]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{research}
+\usepackage[english]{babel}
+\usepackage{tikz} 
+\usetikzlibrary{positioning}
+
+
+\title{Neuron Model}
+\author{Hugo Aguettaz}
+\begin{document}
+\maketitle
+  \tikzstyle{st0} = [draw, circle, minimum size=5mm]
+  \tikzstyle{st1} = [draw, circle, minimum size=10mm]
+  \tikzstyle{st2} = [draw, rectangle, minimum height=7mm, minimum width=10mm] 
+
+
+  Neuron process unit:
+
+  \begin{equation}\label{eq:z_score}
+    z_l(t) = \sum_{m = 1}^M w_m \cdot \left(y_m * h_{\tau_m}\right)(t),
+  \end{equation}
+  with $h_{\tau_m}(t) \eqdef h (t-\tau_m)$.
+
+  Spiking neurons:
+  \begin{equation}
+    y_m(t) = \sum_{t_f \in T_m} \delta(t - t_f)
+  \end{equation}
+
+  So \Cref{eq:z_score} is equivalent to
+  \begin{equation}
+    z_l(t) = \sum_{m = 1}^M  w_m \cdot \sum_{t_f \in T_m} h_{t_f + \tau_m}(t) = \sum_{m = 1}^M  w_m \cdot \tilde{h}_{\tau_m}(t)
+  \end{equation}
+  with $\tilde{h}_{\tau_m}(t) \eqdef \sum_{t_f \in T_m} h_{t_f + \tau_m}(t)$.
+
+  \begin{figure}
+    \centering
+    \begin{tikzpicture} [node distance={20mm}]
+    \node[st0] (0) {$+$}; 
+    \node (h1) [above left=15mm and 40mm of 0] {$\tilde{h}_{\tau_{l, 1}}$}; 
+    \node[st1] (w1) [right of=h1] {$w_{l, 1}$}; 
+
+    \node (h2) [above left=2mm and 40mm of 0] {$\tilde{h}_{\tau_{l, 2}}$}; 
+    \node[st1] (w2) [right of=h2] {$w_{l, 2}$}; 
+
+    \node (1) [below left=2mm and 40mm of 0] {$\vdots$}; 
+
+    \node (hM) [below left=15mm and 40mm of 0] {$\tilde{h}_{\tau_{l, M_l}}$}; 
+    \node[st1] (wM) [right of=hM] {$w_{l, M_l}$}; 
+
+    \node[st2] (cpu) [right of=0] {$\sigma_{\theta_l}$};
+    
+    \node (y) [right of=cpu] {$y_l$};
+
+    \draw (h1) -- (w1);
+    \draw (h2) -- (w2);
+    \draw (hM) -- (wM);
+    \draw (w1) -- (0);
+    \draw (w2) -- (0);
+    \draw (wM) -- (0);
+    \draw (0) -- node[above] {$z_l$} (cpu);
+    \draw (cpu) -- (y);
+
+    \end{tikzpicture}
+    \caption{Spiking neuron model} \label{fig:neuron_model}
+  \end{figure}
+
+  Now, we assume the model is in continuous time but firing occurs on a grid with resolution $T_g$:
+  \begin{equation}
+    T_m \subset \{k T_g : k \in \mathbb{Z}_n\}.
+  \end{equation}
+  Without loss of generality, we assume $T_g = 1$.
+
+
+  For a fixed sequence to learn and fixed synaptic delays, $\tilde{h}_{\tau_{l,m}}$ is fixed for every neuron $l = 1, \dots, L$ 
+  and every synapse $m = 1, \dots, M_l$. Moreover, $z_l$ is also fixed. 
+
+  We define $\tilde{h}_l = \left(\tilde{h}_{\tau_{l,1}}, \dots, \tilde{h}_{\tau_{l,M}}\right)$ 
+
+  So, for each neuron the weights $w_l \in \mathbb{R}^M$ can be learned by minimizing the cost 
+  \begin{equation}
+    \ell_f(w_l) = \frac{1}{n} \sum_{k=1}^n \abs{\inner{w_l}{\tilde{h_l}[k]} - \theta_l} 
+    + \lim_{b \to \infty} \abs{ \inner{w_l}{\tilde{h}_l[k]} + (-1)^{y[k]}\cdot b}
+    - \lim_{b \to \infty} \abs{\theta_l + (-1)^{y[k]} \cdot b}
+  \end{equation}
+  by a gradient descent learning rule:
+  \begin{equation}
+    w_l \leftarrow w_l - \eta \cdot \nabla_{w_l} \ell_f (w_l),
+  \end{equation}
+  with 
+  \begin{equation}
+    \frac{\partial \ell_f (w_l)}{\partial w_{l, m}} = \frac{1}{n} \sum_{k=1}^n \left(\sgn\left(\inner{w_l}{\tilde{h_l}[k]} - \theta_l\right) + (-1)^{y[k]}\right) \cdot \tilde{h}_{l, \tau_m}[k]
+  \end{equation}
+
+  To enforce the weights being in the range $[a, b]$, we use the loss function 
+  \begin{equation}
+    \ell_b(w_l) = \frac{1}{n} \sum_{m=1}^M \abs{w_i - a} + \abs{w_i - b} - \abs{b-a}
+  \end{equation}
+  with partial derivatives
+  \begin{equation}
+    \frac{\partial \ell_b (w_l)}{\partial w_{l, m}} = \sgn(w_i - a) + \sgn(w_i - b)
+  \end{equation}
+
+  The new gradient descent update rule becomes 
+  \begin{equation}
+    w_l \leftarrow w_l - \eta \cdot \nabla_{w_l} \ell (w_l),
+  \end{equation}
+  with $\ell (w_l) = \ell_f(w_l) + \alpha \cdot \ell_b(w_l)$, for some $\alpha \geq 0$.
+
+\end{document}
+
