@@ -1,30 +1,64 @@
 # coding=utf-8
 
-from matplotlib import pyplot as plt
-import seaborn as sns
 import numpy as np
-import pandas as pd
+
+from ..utils.utils import cyclic_range
 
 
-class Phis:
-    def __init__(self, p):
-        if p < 2:
-            raise ValueError(f"The order of the polynomial must be larger than 2 but p={p} < 2")
+def is_firing(seq, N, L, Tr):
+    if N < 1:
+        raise ValueError(f"N must be stricly positive")
 
-        self.p = p
-        self.phis = np.roots([1, -1] + [0] * (p - 2) + [-1])
+    if L < 1:
+        raise ValueError(f"L must be stricly positive")
 
-    def plot(self):
-        fig, ax = plt.subplots(figsize=(12, 12))
-        sns.scatterplot(data=self.dataframe, x="re", y="im", s=50)
-        sns.scatterplot(x=np.array([np.real(self.golden_number)]), y=np.array([np.imag(self.golden_number)]), s=300, marker="*")
-        ax.set(xlim=(-1.7, 1.7), ylim=(-1.7, 1.7))
-        ax.add_artist(plt.Circle((0, 0), 1, fill=False, linestyle="--"))
+    if Tr < 0:
+        raise ValueError(f"Tr must be positive")
 
-    @property
-    def dataframe(self):
-        return pd.DataFrame({"p": self.p, "re": np.real(self.phis), "im": np.imag(self.phis), "mod": np.abs(self.phis), "arg": np.angle(self.phis),})
+    if N == 1 and seq.shape[0] != L:
+        return False
 
-    @property
-    def golden_number(self):
-        return np.real_if_close(self.phis[np.argmax(np.abs(self.phis))])
+    if N > 1 and seq.shape != (N, L):
+        return False
+
+    # check if the sequence is binary
+    if seq.size != np.count_nonzero((seq == 0) | (seq == 1)):
+        return False
+
+    # check if the refractory period is respected
+    indices = cyclic_range(np.arange(L), Tr + 1, L)
+    return np.all(np.sum(seq[..., indices], axis=-1) <= 1)
+
+
+def is_predictable(seq, N, L, Tr, Tw):
+    if N < 1:
+        raise ValueError(f"N must be stricly positive")
+
+    if L < 1:
+        raise ValueError(f"L must be stricly positive")
+
+    if Tr < 0:
+        raise ValueError(f"Tr must be positive")
+
+    # check if the dimensions are correct
+    if seq.shape != (N, L):
+        return False
+
+    # check if the sequence is binary
+    if seq.size != np.count_nonzero((seq == 0) | (seq == 1)):
+        return False
+
+    if Tw <= Tr:
+        raise ValueError(f"Tw must be stricly larger than Tr")
+
+    if Tw >= L:  # proof : the sequence is periodic !!
+        return True
+
+    indices_1 = cyclic_range(np.arange(L), Tw, L)
+    indices_2 = cyclic_range(np.arange(L), Tw + 1, L)
+
+    unique_1 = np.unique(seq[:, indices_1], axis=1)
+    unique_2 = np.unique(seq[:, indices_2], axis=1)
+
+    return unique_1.shape[1] == unique_2.shape[1]
+

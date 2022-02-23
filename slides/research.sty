@@ -18,6 +18,8 @@
 \RequirePackage{amsmath}
 \RequirePackage{amsthm}
 \RequirePackage{amssymb}
+\RequirePackage{bbm}
+\RequirePackage{bm}
 \RequirePackage{mathtools}
 \RequirePackage{graphicx}
 \RequirePackage{tabularx}
@@ -125,10 +127,8 @@
 \newcommand\coolover[2]{\mathrlap{\smash{\overbrace{\phantom{\begin{matrix} #2\end{matrix}}}^{\mbox{$#1$}}}}#2}
 \newcommand\coolunder[2]{\mathrlap{\smash{\underbrace{\phantom{\begin{matrix} #2\end{matrix}}}_{\mbox{$#1$}}}}#2}
 
-\renewcommand{\vec}[1]{\boldsymbol{#1}} %vector
-\newcommand{\hvec}[1]{\hat{\vect{#1}}} %vector with hat
-\newcommand{\mat}[1]{\boldsymbol{#1}} %matrix
-\newcommand{\hmat}[1]{\hat{\mat{#1}}} %matrix with hat
+\renewcommand{\vec}[1]{\bm{#1}} %vector
+\newcommand{\mat}[1]{\bm{#1}} %matrix
 \newcommand{\trans}[1]{#1^{\textnormal{\textsf{\tiny T}}}} %transpose  
 \newcommand{\inv}[1]{#1^{-1}} % inverse  
 \newcommand{\invtrans}[1]{#1^{-\textnormal{\textsf{\tiny T}}}} %transpose of inverse
@@ -180,9 +180,10 @@
 
 %%%%% Sets, cardinalities %%%%%
 \newcommand{\set}[1]{\mathcal{#1}} %set
-\newcommand{\cset}[1]{\mathcal{#1}^{\textnormal{c}}} % complement of set
+
+\newcommand{\cset}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu} % complement of set
 \newcommand{\symset}{\triangle}
-\newcommand{\card}[1]{\#{#1}}        %cardinality of a set.
+\newcommand{\card}[1]{\left|{#1}\right|}        %cardinality of a set.
 \newcommand{\brcard}[1]{\left(\#{#1}\right)} %cardinality of set inside of brackets
 \newcommand{\cardbr}[1]{\#\!\left({#1}\right)} %cardinality of a set with brackets
 \newcommand{\seq}[2]{\left\{#1_{k}\right\}_{k=1}^{#2}}
@@ -223,10 +224,13 @@
 
 \renewcommand{\Pr}[1]{\mathbb{P} \!\left(\left\{#1\right\}\right)}
 \newcommand{\Prcond}[2]{\mathbb{P} \!\left(\left\{#1\right\} | \left\{#2\right\}\right)}
-\newcommand{\E}[1]{\mathbb{E}\!\left({#1}\right)} %expectation
+\newcommand{\Exp}[1]{\mathbb{E}\!\left({#1}\right)} %expectation
 \newcommand{\Econd}[2]{\mathbb{E}\!\left(\left.{#1}\right|{#2}\right)} %expectation
 \newcommand{\Var}[1]{\textnormal{\textsf{Var}}\!\left({#1}\right)} %variance
 \newcommand{\Varcond}[2]{\textnormal{\textsf{Var}}\!\left({#1}\left|{#2}\right.\right)} %expectation
+
+\newcommand{\Indicator}[1]{\mathbbm{1}_{\left\{{#1}\right\}}} %expectation
+
 
 
 
@@ -316,13 +320,6 @@
 \newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
 \newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
 
-
-
-
-%%%%% Futher abbreviations %%%%%
-\newcommand{\eps}{\epsilon} %shorthand for epsilon
-\newcommand{\veps}{\varepsilon}
-
 %% Messages (Message Passing)
 \makeatletter
 \DeclareFontFamily{U}{MnSymbolA}{}
@@ -347,6 +344,16 @@
 \renewcommand{\overleftrightarrow}
 {\mathpalette{\overarrow@\smallleftrightarrowfill@}}
 \makeatother
+
+\makeatletter
+\newenvironment<>{proofs}[1][\proofname]{%
+    \par
+    \def\insertproofname{#1\@addpunct{.}}%
+    \usebeamertemplate{proof begin}#2}
+  {\usebeamertemplate{proof end}}
+\makeatother
+
+
 %%
 \providecommand{\msgf}[2]{\protect\overrightarrow{#1}_{\mspace{-3mu}#2}} % Forward Message
 \providecommand{\msgb}[2]{\protect\overleftarrow{#1}_{\mspace{-3mu}#2}} % Backward Message
@@ -355,28 +362,30 @@
 \newcommand{\connectionDot}{\circle*{1}}
 \newcommand{\markerDot}{\circle*{1}}
 
-\newcommand{\knownBox}{\cent{\rule{1.75\unitlength}{1.75\unitlength}}}
 
-\newcommand{\plusSign}{%
-\begin{picture}(0,0)(0,0)
-\put(0,0){\circle{4}}
-\put(-1,0){\line(1,0){2}}
-\put(0,-1){\line(0,1){2}}
-\end{picture}
-}
 
-\newcommand{\minusSign}{%
-\begin{picture}(0,0)(0,0)
-\put(-1,0){\line(1,0){2}}
-\end{picture}
-}
+% \newcommand{\knownBox}{\cent{\rule{1.75\unitlength}{1.75\unitlength}}}
 
-\newcommand{\timesCross}{%
-  \begin{picture}(0,0)(0,0)
-  \drawline(-1.5,-1.5)(1.5,1.5)
-  \drawline(-1.5,1.5)(1.5,-1.5)
-  \end{picture}
-}
+% \newcommand{\plusSign}{%
+% \begin{picture}(0,0)(0,0)
+% \put(0,0){\circle{4}}
+% \put(-1,0){\line(1,0){2}}
+% \put(0,-1){\line(0,1){2}}
+% \end{picture}
+% }
+
+% \newcommand{\minusSign}{%
+% \begin{picture}(0,0)(0,0)
+% \put(-1,0){\line(1,0){2}}
+% \end{picture}
+% }
+
+% \newcommand{\timesCross}{%
+%   \begin{picture}(0,0)(0,0)
+%   \drawline(-1.5,-1.5)(1.5,1.5)
+%   \drawline(-1.5,1.5)(1.5,-1.5)
+%   \end{picture}
+% }
 
 %\newcommand{\threshold}{%
 %   \begin{picture}(0,0)(0,0)
@@ -405,6 +414,4 @@
 %remark while editing
 \newcommand{\rem}[1]{{\color{red} {#1}}}
 
-\newcommand{\Ident}{\mathbbm{1}}
-\newcommand{\cond}{\hspace{0.02em}|\hspace{0.08em}}
 
