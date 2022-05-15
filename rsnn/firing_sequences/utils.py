@@ -1,64 +1,73 @@
 # coding=utf-8
 
-import numpy as np
-
-from ..utils.utils import cyclic_range
-
-
-def is_firing(seq, N, L, Tr):
-    if N < 1:
-        raise ValueError(f"N must be stricly positive")
-
-    if L < 1:
-        raise ValueError(f"L must be stricly positive")
-
-    if Tr < 0:
-        raise ValueError(f"Tr must be positive")
-
-    if N == 1 and seq.shape[0] != L:
-        return False
-
-    if N > 1 and seq.shape != (N, L):
-        return False
-
-    # check if the sequence is binary
-    if seq.size != np.count_nonzero((seq == 0) | (seq == 1)):
-        return False
-
-    # check if the refractory period is respected
-    indices = cyclic_range(np.arange(L), Tr + 1, L)
-    return np.all(np.sum(seq[..., indices], axis=-1) <= 1)
+import torch
+import torch.nn.functional as F
 
 
-def is_predictable(seq, N, L, Tr, Tw):
-    if N < 1:
-        raise ValueError(f"N must be stricly positive")
+def get_G(Tr):
+    G = torch.zeros((Tr + 1, Tr + 1))
+    G[1:, :-1] = torch.eye(Tr)
+    G[0, [0, -1]] = 1.0
+    return G
 
-    if L < 1:
-        raise ValueError(f"L must be stricly positive")
 
-    if Tr < 0:
-        raise ValueError(f"Tr must be positive")
+def get_cardinality(N, Tr, cyclic=False):
+    G = get_G(Tr)
+    if cyclic:
+        return torch.matrix_power(G, N).trace().item()
 
-    # check if the dimensions are correct
-    if seq.shape != (N, L):
-        return False
+    if N <= Tr + 1:
+        return float(N + 1)
 
-    # check if the sequence is binary
-    if seq.size != np.count_nonzero((seq == 0) | (seq == 1)):
-        return False
+    return torch.matrix_power(G, N - Tr).sum().item()
 
-    if Tw <= Tr:
-        raise ValueError(f"Tw must be stricly larger than Tr")
 
-    if Tw >= L:  # proof : the sequence is periodic !!
-        return True
+def is_predictable(firing_sequences, Tr):
+    B, L, _ = firing_sequences.size()
+    if B > 1:
+        raise NotImplementedError
 
-    indices_1 = cyclic_range(np.arange(L), Tw, L)
-    indices_2 = cyclic_range(np.arange(L), Tw + 1, L)
+    # cyclic condition
+    padding1 = F.pad(firing_sequences, (0, Tr - 1), mode="circular").double()
+    padding2 = F.pad(firing_sequences, (0, Tr), mode="circular").double()
 
-    unique_1 = np.unique(seq[:, indices_1], axis=1)
-    unique_2 = np.unique(seq[:, indices_2], axis=1)
+    # one-to-one correspondence from L-channels windows of length T to [0, (T+1)^L - 1], where T = Tr or Tr + 1.
+    filter1 = torch.arange(1, Tr + 1, dtype=float)[None, None, :] * torch.pow(Tr + 1, torch.arange(L, dtype=float))[None, :, None]
+    filter2 = torch.arange(1, Tr + 2, dtype=float)[None, None, :] * torch.pow(Tr + 2, torch.arange(L, dtype=float))[None, :, None]
 
-    return unique_1.shape[1] == unique_2.shape[1]
+    convolution1 = F.conv1d(padding1, filter1, groups=1)
+    convolution2 = F.conv1d(padding2, filter2, groups=1)
 
+    if convolution1.min() < 0 or convolution2.min() < 0:
+        raise ValueError(f"L and Tr are too large...")
+
+    for b in range(B):
+        if convolution1[b].unique().size() != convolution2[b].unique().size():
+            return False
+
+    return True
+
+
+def count_predictable(firing_sequences, Tr):
+    B, L, _ = firing_sequences.size()
+
+    # cyclic condition
+    padding1 = F.pad(firing_sequences, (0, Tr - 1), mode="circular").double()
+    padding2 = F.pad(firing_sequences, (0, Tr), mode="circular").double()
+
+    # one-to-one correspondence from L-channels windows of length T to [0, (T+1)^L - 1], where T = Tr or Tr + 1.
+    filter1 = torch.arange(1, Tr + 1, dtype=float)[None, None, :] * torch.pow(Tr + 1, torch.arange(L, dtype=float))[None, :, None]
+    filter2 = torch.arange(1, Tr + 2, dtype=float)[None, None, :] * torch.pow(Tr + 2, torch.arange(L, dtype=float))[None, :, None]
+
+    convolution1 = F.conv1d(padding1, filter1, groups=1)
+    convolution2 = F.conv1d(padding2, filter2, groups=1)
+
+    if convolution1.min() < 0 or convolution2.min() < 0:
+        raise ValueError(f"L and Tr are too large...")
+
+    count = 0
+    for b in range(B):
+        if convolution1[b].unique().size() == convolution2[b].unique().size():
+            count += 1
+
+    return count

@@ -23,44 +23,29 @@ class RSNN:
     def init_impulse_response(self, Th, eps=1e-3):
         beta = -Th / np.real_if_close(lambertw(-eps / np.exp(1), -1))
         self.impulse_response = lambda t: t / beta * np.exp(1 - t / beta)
-        self.grid = np.arange(-Th, 0)
         self.Th = Th
 
     def init_learning(self, w_lim, alpha=10):
         w_min, w_max = w_lim
-        self.grad_loss_fit = (
-            lambda w_, z_, y_: 1
-            / y_.size
-            * np.dot(np.sign(np.dot(z_, w_) - self.theta) + (-1) ** y_, z_)
-        )
+        self.grad_loss_fit = lambda w_, z_, y_: 1 / y_.size * np.dot(np.sign(np.dot(z_, w_) - self.theta) + (-1) ** y_, z_)
         self.grad_loss_reg = lambda w_: np.sign(w_ - w_min) + np.sign(w_ - w_max)
-        self.grad_loss = lambda w_, z_, y_: self.grad_loss_fit(
-            w_, z_, y_
-        ) + alpha * self.grad_loss_reg(w_)
+        self.grad_loss = lambda w_, z_, y_: self.grad_loss_fit(w_, z_, y_) + alpha * self.grad_loss_reg(w_)
 
     def memorize(self, data, eta=1e-2, num_iter=50000):
-        length = data.shape[1]
+        L = data.shape[1]
+        grid = np.arange(-self.Th, 0)
         z = np.sum(
-            [
-                self.impulse_response(-self.grid[None, None, :] - self.delays[:, :, None])
-                * np.roll(data[self.origins], -l, axis=-1)[:, :, -self.grid.shape[0] :]
-                for l in range(length)
-            ],
-            axis=-1,
+            [self.impulse_response(-grid[None, None, :] - self.delays[:, :, None]) * np.roll(data[self.origins], -l, axis=-1)[:, :, -grid.shape[0] :] for l in range(L)], axis=-1,
         )
 
         for n in range(self.num_neurons):
             if self.Tr > 0:
-                free_indices = [
-                    l for l in range(length) if np.sum(np.roll(data[n], -l)[..., -self.Tr :]) < 1
-                ]
+                free_indices = [l for l in range(L) if np.sum(np.roll(data[n], -l)[..., -self.Tr :]) < 1]
             else:
-                free_indices = np.arange(length)
+                free_indices = np.arange(L)
 
             for _ in range(num_iter):
-                grad_loss = self.grad_loss(
-                    self.weights[n], z[free_indices, n], data[n, free_indices]
-                )
+                grad_loss = self.grad_loss(self.weights[n], z[free_indices, n], data[n, free_indices])
                 if np.abs(grad_loss).max() < 1e-5:
                     print(f"Weights optimization on neuron {n} is done!")
                     break
@@ -72,22 +57,19 @@ class RSNN:
 
         print("Memorization is done!")
 
-    def forward(self, input):
-        if input.shape[1] < self.Th:
+    def forward(self, input, res=1):
+        if input.shape[1] < self.Th * res:
             raise ValueError("Input duration is not sufficiently large")
 
-        input = input[:, -self.Th :]
+        input = input[:, -self.Th * res :]
+        grid = np.arange(-self.Th * res, 0) / res
 
         output = np.zeros(self.num_neurons, int)
         for n in range(self.num_neurons):
-            if self.Tr > 0 and np.sum(input[n, -self.Tr :]) > 0:
+            if self.Tr > 0 and np.sum(input[n, -self.Tr * res :]) > 0:
                 continue
 
-            zn = np.sum(
-                self.impulse_response(-self.grid[None, :] - self.delays[n, :, None])
-                * input[self.origins[n]],
-                axis=-1,
-            )
+            zn = np.sum(self.impulse_response(-grid[None, :] - self.delays[n, :, None]) * input[self.origins[n]], axis=-1,)
             output[n] = self.spike_generator(np.inner(zn, self.weights[n]))
 
         return output
