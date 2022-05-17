@@ -27,7 +27,7 @@ def backward_filtering_forward_sampling(B, L, N, Tr):
         p = G[z[:, n - 1]] * msgb[:, n]
         z[:, n] = torch.multinomial(p, 1).squeeze()
 
-    firing_sequences = torch.zeros((B * L, N), dtype=int)
-    firing_sequences[z == Tr] = 1
+    firing_sequences = torch.zeros((B * L, N), dtype=bool)
+    firing_sequences[z == Tr] = True
 
     return firing_sequences.view(B, L, N)

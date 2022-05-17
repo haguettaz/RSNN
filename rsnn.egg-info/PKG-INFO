@@ -2,11 +2,7 @@ Metadata-Version: 2.1
 Name: rsnn
 Version: 0.1.0
 Summary: Description
-License: UNKNOWN
-Platform: UNKNOWN
 Description-Content-Type: text/markdown
 Provides-Extra: tests
 
-# Firing signals
-
-
+# Recurrent Spiking Neural Networks
