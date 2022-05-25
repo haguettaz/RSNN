@@ -47,7 +47,7 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
         mx (torch.FloatTensor): posterior means with shape (..., C).
         xmin (float or torch.FloatTensor, optional): smallest admissible value. If torch.FloatTensor, it must be broadcastable with mx. Defaults to None.
         xmax (float or torch.FloatTensor, optional): largest admissible value. If torch.FloatTensor, it must be broadcastable with mx. Defaults to None.
-        gamma (float, optional): _description_. Defaults to 1.
+        gamma (float, optional): constraint' hardness parameter, the smaller the softer. Defaults to 1.
 
     Returns:
         mx_f (torch.FloatTensor): prior means with shape (..., C).
