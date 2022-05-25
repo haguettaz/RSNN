@@ -3,6 +3,18 @@ import torch.nn.functional as F
 
 
 def compute_observation_matrix(firing_sequences, taus, origins, Tr, impulse_response):
+    """_summary_
+
+    Args:
+        firing_sequences (torch.BoolTensor): the firing sequences with shape (L, N).
+        taus (torch.LongTensor): the transmission delays with shape (L, K).
+        origins (torch.LongTensor): the presynaptic neuron indices with shape (L, K).
+        Tr (int): the refractory period.
+        impulse_response (function): the impulse response (synapse + neuron).
+
+    Returns:
+        C (torch.FloatTensor): the observation tensor with shape (L, N, 2, K).
+    """
     L, N = firing_sequences.size()
     K = taus.size(1)
     tau_max = taus.max()
@@ -19,19 +31,30 @@ def compute_observation_matrix(firing_sequences, taus, origins, Tr, impulse_resp
     return C
 
 
-def check_parameters(wlim, theta, eta, eps, Tr):
-    if eps >= Tr:
-        raise ValueError(f"eps should be strictly smaller than Tr, but got {eps} >= {Tr}")
-
-    if wlim[0] >= wlim[1]:
-        raise ValueError(f"wmin should be strictly smaller than wmax, but got {wlim[0]} >= {wlim[1]}")
-
-
 def get_mask_at_firing(firing_sequences):
+    """
+    Return a mask with True value at firing times.
+
+    Args:
+        firing_sequences (torch.BoolTensor): the firing sequences with shape (L, N).
+
+    Returns:
+        (torch.BoolTensor): the at firing mask.
+    """
     return firing_sequences
 
 
 def get_mask_around_firing(firing_sequences, eps):
+    """
+    Return a mask with True value inside any eps-sphere around a firing time.
+
+    Args:
+        firing_sequences (torch.BoolTensor): the firing sequences.
+        eps (int): the around parameter.
+
+    Returns:
+        (torch.BoolTensor): the around firing mask.
+    """
     L, N = firing_sequences.size()
     filter = torch.ones(L, 1, 2 * eps + 1)
     padding = F.pad(firing_sequences[None, ...].float(), (eps, eps), mode="circular")
@@ -39,6 +62,17 @@ def get_mask_around_firing(firing_sequences, eps):
 
 
 def get_mask_refractory_period(firing_sequences, Tr, eps):
+    """
+    Return a mask with True value during the refractory period (and outside of any eps-sphere around a firing time).
+
+    Args:
+        firing_sequences (torch.BoolTensor): the firing sequences.
+        Tr (int): the refractory period.
+        eps (int): the around parameter.
+
+    Returns:
+        (torch.BoolTensor): the refractory period mask.
+    """
     L, N = firing_sequences.size()
     filter = torch.FloatTensor([1] * (Tr - eps) + [0] * (eps + 1)).expand(L, 1, Tr + 1)
     padding = F.pad(firing_sequences[None, ...].float(), (Tr, 0), mode="circular")
