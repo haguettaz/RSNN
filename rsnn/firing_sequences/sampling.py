@@ -3,7 +3,18 @@ import torch
 from .utils import get_cardinality, get_G
 
 
-def backward_filtering_forward_sampling(B, L, N, Tr):
+def backward_filtering_forward_sampling(L, N, Tr, B=1):
+    """_summary_
+
+    Args:
+        L (int): the number of channels/neurons.
+        N (int): the length.
+        Tr (int): the refractory period, i.e., the minimum number of zeros between two consecutive ones.
+        B (int, optional): the number of batches. Defaults to 1.
+
+    Returns:
+        firing_sequences (torch.BoolTensor): the firing sequences with shape (B, L, N) or (L, N).
+    """
     G = get_G(Tr)
 
     z = torch.zeros((B * L, N), dtype=int)
@@ -29,5 +40,8 @@ def backward_filtering_forward_sampling(B, L, N, Tr):
 
     firing_sequences = torch.zeros((B * L, N), dtype=bool)
     firing_sequences[z == Tr] = True
+
+    if B == 1:
+        return firing_sequences
 
     return firing_sequences.view(B, L, N)

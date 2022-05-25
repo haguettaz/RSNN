@@ -1,8 +1,9 @@
 import torch
 
 
-def compute_posterior_means(mw_f, Vw_f, my_b, Vy_b, C):
-    """_summary_
+def compute_posterior(mw_f, Vw_f, my_b, Vy_b, C):
+    """
+    Return posterior means and variances according to Table V in Loeliger2016.
 
     Args:
         mw_f (torch.FloatTensor): forward weight means with size (L, K).
@@ -44,18 +45,15 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
     Args:
         mx (torch.FloatTensor): posterior means with shape (..., C).
         xmin (float, optional): smallest admissible value. Defaults to None.
-        xmax (float, optional): largest admissible value. Defaults to None".
+        xmax (float, optional): largest admissible value. Defaults to None.
         gamma (float, optional): _description_. Defaults to 1.
 
-    Raises:
-        ValueError: _description_
-        ValueError: _description_
-
     Returns:
-        _type_: _description_
+        mx_f (torch.FloatTensor): prior means with shape (..., C).
+        Vx_f (torch.FloatTensor): prior variances with shape (..., C).
     """
     if xmin is None and xmax is None:
-        raise ValueError(f"at least one of xmin, xmax must be defined")
+        raise ValueError(f"at least one of xmin, xmax must be finite")
 
     if xmin is None:
         sigma2x_max = (mx - xmax).abs()
@@ -85,20 +83,28 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
 
 
 def compute_binary_prior(mx, Vx=None, xmin=0, xmax=1, update="am"):
-    """_summary_
+    """
+    Binary constraint, i.e., :math: `x \in \{x_{\min}, x_{\max}\}`
 
     Args:
         mx (torch.FloatTensor): posterior means with size (..., C).
-        Vx (torch.FloatTensor): posterior variances with size (B, C). Defaults to None.
-        xmin (float, optional): _description_. Defaults to 0.
-        xmax (float, optional): _description_. Defaults to 1.
+        Vx (torch.FloatTensor): posterior variances with size (..., C). Defaults to None.
+        xmin (float, optional): smallest admissible value. Defaults to 0.
+        xmax (float, optional): largest admissible value. Defaults to 1.
         update (str, optional): update rule, either "am" or "em". Defaults to "am".
+
+    Returns:
+        mx_f (torch.FloatTensor): prior means with shape (..., C).
+        Vx_f (torch.FloatTensor): prior variances with shape (..., C).
     """
+    if xmin > xmax:
+        raise ValueError(f"xmin cannot be larger than xmax")
+
     if update not in {"am", "em"}:
         raise ValueError(f"update must be 'am' or 'em'")
 
     if Vx is None and update == "em":
-        raise ValueError(f"Posterior variances are required for EM update rule")
+        raise ValueError(f"posterior variances are required for EM update rule")
 
     if update == "am":
         Vx_min = (mx - xmin).pow(2) + 1e-9
@@ -115,27 +121,33 @@ def compute_binary_prior(mx, Vx=None, xmin=0, xmax=1, update="am"):
 
 def compute_m_ary_prior(mx, Vx, xmin, xmax, M, update="am"):
     """
-    M-level constraint, i.e, x must be in \mathcal{X} = {xmin, ..., xmax} with cardinality M
+    Return prior messages corresponding to M-level constraints, i.e., :math: `x \in \{x_{\min}, \dots, x_{\max}\}`.
 
     Args:
         mx (torch.FloatTensor): posterior means with size (..., M-1, C).
         Vx (torch.FloatTensor): posterior variances with size (..., M-1, C).
-        xmin (_type_): _description_
-        xmax (_type_): _description_
-        M (_type_): _description_
+        xmin (float): smallest admissible value.
+        xmax (float): largest admissible value.
+        M (int): number of levels.
         update (str): update rule, either "am" or "em". Defaults to "am".
+
+    Returns:
+        mx_f (torch.FloatTensor): prior means with shape (..., C).
+        Vx_f (torch.FloatTensor): prior variances with shape (..., C).
     """
+    if xmin > xmax:
+        raise ValueError(f"xmin cannot be larger than xmax")
 
     if update not in {"am", "em"}:
         raise ValueError(f"update must be 'am' or 'em'")
+
+    if Vx is None and update == "em":
+        raise ValueError(f"posterior variances are required for EM update rule")
 
     mx_f = torch.empty_like(mx)
     Vx_f = torch.empty_like(mx)
 
     for m in range(M - 1):
-        if update == "em":
-            mx_f[..., m, :], Vx_f[..., m, :] = compute_binary_prior(mx[..., m, :], Vx[..., m, :], xmin / (M - 1), xmax / (M - 1), "em")
-        else:
-            mx_f[..., m, :], Vx_f[..., m, :] = compute_binary_prior(mx[..., m, :], None, xmin / (M - 1), xmax / (M - 1), "am")
+        mx_f[..., m, :], Vx_f[..., m, :] = compute_binary_prior(mx[..., m, :], Vx[..., m, :] if update == "em" else None, xmin / (M - 1), xmax / (M - 1), update)
 
     return mx_f, Vx_f
