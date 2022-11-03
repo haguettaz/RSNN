@@ -330,4 +330,8 @@ TSWLatexianTemp*
 # Support for Project snippet scope
 !.vscode/*.code-snippets
 
+# MACOS
+*/.DS_Store
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,jupyternotebooks,latex
+
