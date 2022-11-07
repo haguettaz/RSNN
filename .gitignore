@@ -9,6 +9,8 @@
 */.ipynb_checkpoints/*
 *.pyc
 
+*.pt
+
 # IPython
 profile_default/
 ipython_config.py

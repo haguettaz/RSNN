@@ -5,6 +5,8 @@ from .prior import compute_box_prior
 
 
 def compute_weights(
+    l,
+    return_dict,
     C_f,
     C_a,
     C_s,
@@ -47,7 +49,7 @@ def compute_weights(
 
     for itr in range(num_iter):
         # posterior
-        mw, Vw = compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_a, mz_b_s, Vz_b_s, C_s)
+        mw, _ = compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_a, mz_b_s, Vz_b_s, C_s)
         mz_f = C_f @ mw
         mz_a = C_a @ mw
         mz_s = C_s @ mw
@@ -58,7 +60,7 @@ def compute_weights(
         z_s_err = compute_z_s_err(mz_s)
 
         if w_err < tol and z_f_err < tol and z_a_err < tol and z_s_err < tol:
-            print(f"Optimization problem solved after {itr} iterations!")
+            print(f"Optimization problem solved after {itr} iterations!", flush=True)
             break
 
         # priors
@@ -68,4 +70,7 @@ def compute_weights(
         mz_b_a[:, 0, 0], Vz_b_a[:, 0, 0] = compute_box_prior(mz_a[:, 0, 0], a, None, gamma_a)
         mz_b_s[:, 0, 0], Vz_b_s[:, 0, 0] = compute_box_prior(mz_s[:, 0, 0], None, b, gamma_b)
 
-    return mw.squeeze()
+    print("Optimization done with errors: ", w_err, z_f_err, z_a_err, z_s_err, flush=True)
+    return_dict[l] = mw
+
+    # return mw.squeeze()
