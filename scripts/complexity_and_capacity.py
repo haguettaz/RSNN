@@ -13,8 +13,8 @@ from rsnn.spike_sequences.sampling import sample_spike_sequences
 
 if __name__ == "__main__":
 
-    L = 2
-    K = 500
+    L = 100
+    K = 200
 
     wb = 0.1
     taub = 60
@@ -102,7 +102,6 @@ if __name__ == "__main__":
                 mz_b[firing_indices[:, 0], firing_indices[:, 1], 0],
                 Vz_b[firing_indices[:, 0], firing_indices[:, 1], 0],
             ) = compute_box_prior(mz[firing_indices[:, 0], firing_indices[:, 1], 0], theta, theta, gamma_theta)
-            print("alpha = ", alpha, " optimization done in ", time() - t0, "s", flush=True)
 
         # optimization loss results
         config["w_err"] = ((mw - wb).abs() + (mw + wb).abs() - 2 * wb).sum()
@@ -122,41 +121,41 @@ if __name__ == "__main__":
             (torch.argwhere(spike_sequence).flatten()).tolist() for spike_sequence in torch.unbind(spike_sequences, -1)
         ]
 
-        ## SIMULATIONS
-        # without noise
-        config["noise_std"] = 0
-        noisy_references = get_input(references, 0, 0, T)
-        firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
-        config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
-        list_of_config.append(config.copy())
-        print("alpha = ", alpha, " without noise: done!")
+    #     ## SIMULATIONS
+    #     # without noise
+    #     config["noise_std"] = 0
+    #     noisy_references = get_input(references, 0, 0, T)
+    #     firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
+    #     config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
+    #     list_of_config.append(config.copy())
+    #     print("alpha = ", alpha, " without noise: done!")
 
-        # low noise
-        config["noise_std"] = Tr / 20
-        for _ in range(5):
-            noisy_references = get_input(references, 0, Tr / 20, T)
-            firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
-            config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
-            list_of_config.append(config.copy())
-        print("alpha = ", alpha, " with low noise: done!", flush=True)
+    #     # low noise
+    #     config["noise_std"] = Tr / 20
+    #     for _ in range(5):
+    #         noisy_references = get_input(references, 0, Tr / 20, T)
+    #         firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
+    #         config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
+    #         list_of_config.append(config.copy())
+    #     print("alpha = ", alpha, " with low noise: done!", flush=True)
 
-        # mid noise
-        config["noise_std"] = Tr / 10
-        for _ in range(5):
-            noisy_references = get_input(references, 0, Tr / 10, T)
-            firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
-            config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
-            list_of_config.append(config.copy())
-        print("alpha = ", alpha, " with mid noise: done!", flush=True)
+    #     # mid noise
+    #     config["noise_std"] = Tr / 10
+    #     for _ in range(5):
+    #         noisy_references = get_input(references, 0, Tr / 10, T)
+    #         firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
+    #         config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
+    #         list_of_config.append(config.copy())
+    #     print("alpha = ", alpha, " with mid noise: done!", flush=True)
 
-        # high noise
-        config["noise_std"] = Tr / 5
-        for _ in range(5):
-            noisy_references = get_input(references, 0, Tr / 5, T)
-            firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
-            config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
-            list_of_config.append(config.copy())
-        print("alpha = ", alpha, " with high noise: done!", flush=True)
+    #     # high noise
+    #     config["noise_std"] = Tr / 5
+    #     for _ in range(5):
+    #         noisy_references = get_input(references, 0, Tr / 5, T)
+    #         firing_times = simulate(sources, delays, mw, theta, Tr, impulse_resp, noisy_references, 10 * T, 0.001)
+    #         config["drift_mean"], config["drift_std"] = compute_drift(firing_times, references, T, 9)
+    #         list_of_config.append(config.copy())
+    #     print("alpha = ", alpha, " with high noise: done!", flush=True)
 
-    df = pd.DataFrame(list_of_config)
-    df.to_csv("complexity_and_capacity.csv", index=False)
+    # df = pd.DataFrame(list_of_config)
+    # df.to_csv("complexity_and_capacity.csv", index=False)
