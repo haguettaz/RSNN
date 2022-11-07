@@ -20,8 +20,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(args.L, args.K, args.alpha)
-
     wb = 0.1
     taub = 60
     theta = 1.0
