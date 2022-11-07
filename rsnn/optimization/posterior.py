@@ -5,7 +5,7 @@ import torch
 from ..utils.utils import inv_2x2
 
 
-def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_a, mz_b_s, Vz_b_s, C_s):
+def compute_weight_posterior(mw_f, Vw_f, mz_b_theta, Vz_b_theta, C_theta, mz_b_a, Vz_b_a, C_a, mz_b_b, Vz_b_b, C_b):
     """
     Returns posterior weight means and variances according to Table V in Loeliger2016.
 
@@ -25,28 +25,26 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_
     Returns:
         _type_: _description_
     """
-    N_f, N_a, N_s = C_f.size(0), C_a.size(0), C_s.size(0)
+    N_theta, N_a, N_b = C_theta.size(0), C_a.size(0), C_b.size(0)
 
     prev_mw_f = mw_f.clone()
     prev_Vw_f = Vw_f.clone()
 
-    # TODO: computing the inverse of a 2x2 matrix is not numerically stable, we should use solve instead but this is not implemented in pytorch for mps tensors yet.
+    # Equality Constraints at Firing Times
+    for n in range(N_theta):
+        # H = torch.linalg.solve(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9, C_f[n] @ prev_Vw_f).T
+        # mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
+        # Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
+        H = prev_Vw_f @ C_theta[n].T / (Vz_b_theta[n] + C_theta[n] @ prev_Vw_f @ C_theta[n].T)
+        # H = G * prev_Vw_f @ C_f[n].T
+        mw_f = prev_mw_f + H @ (mz_b_theta[n] - C_theta[n] @ prev_mw_f)
+        Vw_f = prev_Vw_f - H @ C_theta[n] @ prev_Vw_f
+        prev_mw_f = mw_f.clone()
+        prev_Vw_f = Vw_f.clone()
 
-    # firing times => 1 constraint on the potential and 1 constraint on its derivative
-    # for n in range(N_f):
-    #     # H = torch.linalg.solve(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9, C_f[n] @ prev_Vw_f).T
-    #     # mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
-    #     # Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
-    #     G = inv_2x2(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9)
-    #     H = prev_Vw_f @ C_f[n].T @ G
-    #     mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
-    #     Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
-    #     prev_mw_f = mw_f.clone()
-    #     prev_Vw_f = Vw_f.clone()
-
-    # active periods => 1 constraint on the potential derivative
+    # Unequality Constraints at Active Times
     for n in range(N_a):
-        H = prev_Vw_f @ C_a[n].T / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
+        H = prev_Vw_f @ C_a[n].T / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T)
         mw_f = prev_mw_f + H @ (mz_b_a[n] - C_a[n] @ prev_mw_f)
         Vw_f = prev_Vw_f - H @ C_a[n] @ prev_Vw_f
         # G = 1 / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
@@ -56,11 +54,11 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_
         prev_mw_f = mw_f.clone()
         prev_Vw_f = Vw_f.clone()
 
-    # silent periods => 1 constraint on the potential
-    for n in range(N_s):
-        H = prev_Vw_f @ C_s[n].T / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
-        mw_f = prev_mw_f + H @ (mz_b_s[n] - C_s[n] @ prev_mw_f)
-        Vw_f = prev_Vw_f - H @ C_s[n] @ prev_Vw_f
+    # Unequality Constraints at Silent Times
+    for n in range(N_b):
+        H = prev_Vw_f @ C_b[n].T / (Vz_b_b[n] + C_b[n] @ prev_Vw_f @ C_b[n].T)
+        mw_f = prev_mw_f + H @ (mz_b_b[n] - C_b[n] @ prev_mw_f)
+        Vw_f = prev_Vw_f - H @ C_b[n] @ prev_Vw_f
         # G = 1 / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
         # H = prev_Vw_f @ C_s[n].T * G
         # mw_f = prev_mw_f + H @ (mz_b_s[n] - C_s[n] @ prev_mw_f)
@@ -68,4 +66,4 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_
         prev_mw_f = mw_f.clone()
         prev_Vw_f = Vw_f.clone()
 
-    return mw_f, Vw_f
+    return mw_f.flatten(), Vw_f.diag()
