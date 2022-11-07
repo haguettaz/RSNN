@@ -6,7 +6,6 @@ import torch.multiprocessing as mp
 
 from rsnn.optimization.optimization import compute_weights
 from rsnn.optimization.utils import compute_observation_matrices
-
 # from rsnn.simulation.simulation import simulate
 # from rsnn.simulation.utils import compute_drift, get_input
 from rsnn.spike_sequences.sampling import sample_spike_sequences
@@ -35,10 +34,12 @@ if __name__ == "__main__":
     b = 0.0  # maximum level in silent period
     a = 1.0  # minimum slope in activity period
 
-    gamma_wb = 10.0
-    gamma_b = 3.0
-    gamma_a = 5.0
-    gamma_theta = 10.0
+    gamma_wb = 2.0
+    gamma_theta = 50.0
+    gamma_a = 2.0
+    gamma_b = 2.0
+
+    # device = torch.device("cpu") # torch.device("mps:0" if torch.has_mps else "cpu")
 
     # config = {
     #     "L": L,
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     list_of_config = []
 
     for alpha in [5, 10, 20, 50, 100]:
-        print("alpha = ", alpha, " start...", flush=True)
+        print(f"alpha = {alpha}", flush=True)
 
         T = alpha * Tr
         # config["alpha"] = alpha
@@ -70,28 +71,37 @@ if __name__ == "__main__":
         spike_sequences = sample_spike_sequences(L, T, Tr)
         torch.save(spike_sequences, f"spike_sequences_{alpha}.pt")
 
-        observation_matrices = []
+        C_f, C_a, C_s = [], [], []
         for l in range(L):
             segmentation = segment_spike_sequence(spike_sequences[l], Tr, 1)
-            observation_matrices.append(
-                compute_observation_matrices(
-                    spike_sequences, segmentation, delays[l], sources[l], Tr, impulse_resp, impulse_resp_deriv
-                )
+            C_f_tmp, C_a_tmp, C_s_tmp = compute_observation_matrices(
+                spike_sequences, segmentation, delays[l], sources[l], Tr, impulse_resp, impulse_resp_deriv
             )
+            C_f.append(C_f_tmp)
+            C_a.append(C_a_tmp)
+            C_s.append(C_s_tmp)
 
-        ## OPTIMIZATION
-        manager = mp.Manager()
-        return_dict = manager.dict()
-        jobs = []
+        # compute the weights
+        weights = torch.empty(L, K)
         for l in range(L):
-            p = mp.Process(target=compute_weights, args=(l, return_dict, *observation_matrices[l], wb, theta, a, b))
-            jobs.append(p)
-            p.start()
+            weights[l] = compute_weights(
+                C_f[l], C_a[l], C_s[l], wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b
+            )
+            print(f"Neuron {l} optimization is done!", flush=True)
 
-        for p in jobs:
-            p.join()
+        # ## OPTIMIZATION
+        # manager = mp.Manager()
+        # return_dict = manager.dict()
+        # jobs = []
+        # for l in range(L):
+        #     p = mp.Process(target=compute_weights, args=(l, return_dict, *observation_matrices[l], wb, theta, a, b))
+        #     jobs.append(p)
+        #     p.start()
 
-        weights = torch.stack([return_dict[l] for l in range(L)])
+        # for p in jobs:
+        #     p.join()
+
+        # weights = torch.stack([return_dict[l] for l in range(L)])
         torch.save(weights, f"weights_{alpha}.pt")
 
         # references = [

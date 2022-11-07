@@ -1,3 +1,5 @@
+from time import time
+
 import torch
 
 from ..utils.utils import inv_2x2
@@ -31,38 +33,38 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, C_f, mz_b_a, Vz_b_a, C_
     # TODO: computing the inverse of a 2x2 matrix is not numerically stable, we should use solve instead but this is not implemented in pytorch for mps tensors yet.
 
     # firing times => 1 constraint on the potential and 1 constraint on its derivative
-    for n in range(N_f):
-        # H = torch.linalg.solve(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9, C_f[n] @ prev_Vw_f).T
-        # mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
-        # Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
-        G = inv_2x2(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9)
-        H = prev_Vw_f @ C_f[n].T @ G
-        mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
-        Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
-        prev_mw_f = mw_f.clone()
-        prev_Vw_f = Vw_f.clone()
+    # for n in range(N_f):
+    #     # H = torch.linalg.solve(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9, C_f[n] @ prev_Vw_f).T
+    #     # mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
+    #     # Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
+    #     G = inv_2x2(Vz_b_f[n] + C_f[n] @ prev_Vw_f @ C_f[n].T + 1e-9)
+    #     H = prev_Vw_f @ C_f[n].T @ G
+    #     mw_f = prev_mw_f + H @ (mz_b_f[n] - C_f[n] @ prev_mw_f)
+    #     Vw_f = prev_Vw_f - H @ C_f[n] @ prev_Vw_f
+    #     prev_mw_f = mw_f.clone()
+    #     prev_Vw_f = Vw_f.clone()
 
     # active periods => 1 constraint on the potential derivative
     for n in range(N_a):
-        # H = prev_Vw_f @ C_a[n].T / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
-        # mw_f = prev_mw_f + H @ (mz_b_a[n] - C_a[n] @ prev_mw_f)
-        # Vw_f = prev_Vw_f - H @ C_a[n] @ prev_Vw_f
-        G = 1 / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
-        H = prev_Vw_f @ C_a[n].T * G
+        H = prev_Vw_f @ C_a[n].T / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
         mw_f = prev_mw_f + H @ (mz_b_a[n] - C_a[n] @ prev_mw_f)
         Vw_f = prev_Vw_f - H @ C_a[n] @ prev_Vw_f
+        # G = 1 / (Vz_b_a[n] + C_a[n] @ prev_Vw_f @ C_a[n].T + 1e-9)
+        # H = prev_Vw_f @ C_a[n].T * G
+        # mw_f = prev_mw_f + H @ (mz_b_a[n] - C_a[n] @ prev_mw_f)
+        # Vw_f = prev_Vw_f - H @ C_a[n] @ prev_Vw_f
         prev_mw_f = mw_f.clone()
         prev_Vw_f = Vw_f.clone()
 
     # silent periods => 1 constraint on the potential
     for n in range(N_s):
-        # H = prev_Vw_f @ C_s[n].T / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
-        # mw_f = prev_mw_f + H @ (mz_b_s[n] - C_s[n] @ prev_mw_f)
-        # Vw_f = prev_Vw_f - H @ C_s[n] @ prev_Vw_f
-        G = 1 / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
-        H = prev_Vw_f @ C_s[n].T * G
+        H = prev_Vw_f @ C_s[n].T / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
         mw_f = prev_mw_f + H @ (mz_b_s[n] - C_s[n] @ prev_mw_f)
         Vw_f = prev_Vw_f - H @ C_s[n] @ prev_Vw_f
+        # G = 1 / (Vz_b_s[n] + C_s[n] @ prev_Vw_f @ C_s[n].T + 1e-9)
+        # H = prev_Vw_f @ C_s[n].T * G
+        # mw_f = prev_mw_f + H @ (mz_b_s[n] - C_s[n] @ prev_mw_f)
+        # Vw_f = prev_Vw_f - H @ C_s[n] @ prev_Vw_f
         prev_mw_f = mw_f.clone()
         prev_Vw_f = Vw_f.clone()
 

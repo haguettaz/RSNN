@@ -4,26 +4,10 @@ from .posterior import compute_weight_posterior
 from .prior import compute_box_prior
 
 
-def compute_weights(
-    l,
-    return_dict,
-    C_f,
-    C_a,
-    C_s,
-    wb,
-    theta,
-    a,
-    b,
-    gamma_wb=1,
-    gamma_theta=1,
-    gamma_a=1,
-    gamma_b=1,
-    num_iter=200,
-    tol=1e-3,
-):
+def compute_weights(C_f, C_a, C_s, wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b, num_iter=200, tol=1e-3):
 
-    N_a, N_f, N_s = C_a.size(0), C_f.size(0), C_s.size(0)
-    K = C_a.size(2)
+    N_f, N_a, N_s = C_f.size(0), C_a.size(0), C_s.size(0)
+    K = C_f.size(2)
 
     mw_f = torch.FloatTensor(K, 1).uniform_(-wb, wb)
     Vw_f = torch.eye(K)
@@ -39,13 +23,10 @@ def compute_weights(
     mz_b_s = torch.ones(N_s, 1, 1) * b
     Vz_b_s = torch.ones(N_s, 1, 1)
 
-    compute_w_err = lambda w_: gamma_wb * ((w_ - wb).abs() + (w_ + wb).abs() - 2 * wb).sum()
-    compute_z_f_err = (
-        lambda z_f: gamma_theta * (z_f[:, 0] - theta).abs().sum()
-        + gamma_a * ((z_f[:, 1] - a).abs() + (z_f[:, 1] - 1e12).abs() - 1e12).sum()
-    )
-    compute_z_a_err = lambda z_a: gamma_a * ((z_a[:, 0] - a).abs() + (z_a[:, 0] - 1e12).abs() - 1e12).sum()
-    compute_z_s_err = lambda z_s: gamma_b * ((z_s[:, 0] - b).abs() + (z_s[:, 0] + 1e12).abs() - 1e12).sum()
+    compute_wb_err = lambda w_: gamma_wb * ((w_ - wb).abs() + (w_ + wb).abs() - 2 * wb).sum()
+    compute_theta_err = lambda z_: gamma_theta * (z_ - theta).abs().sum()
+    compute_a_err = lambda z_: gamma_a * ((z_ - a).abs() - (z_ - a)).sum()
+    compute_b_err = lambda z_: gamma_b * ((z_ - b).abs() + (z_ - b)).sum()
 
     for itr in range(num_iter):
         # posterior
@@ -54,12 +35,16 @@ def compute_weights(
         mz_a = C_a @ mw
         mz_s = C_s @ mw
 
-        w_err = compute_w_err(mw)
-        z_f_err = compute_z_f_err(mz_f)
-        z_a_err = compute_z_a_err(mz_a)
-        z_s_err = compute_z_s_err(mz_s)
+        print(mz_b_f[:, 0, 0], mz_f[:, 0, 0])
 
-        if w_err < tol and z_f_err < tol and z_a_err < tol and z_s_err < tol:
+        wb_err = compute_wb_err(mw[:, 0])
+        theta_err = compute_theta_err(mz_f[:, 0, 0])
+        a_err = compute_a_err(mz_f[:, 1, 0]) + compute_a_err(mz_a[:, 0, 0])
+        b_err = compute_b_err(mz_s[:, 0, 0])
+
+        print("Optimization update done with errors: ", wb_err, theta_err, a_err, b_err, flush=True)
+
+        if wb_err < tol and theta_err < tol and a_err < tol and b_err < tol:
             print(f"Optimization problem solved after {itr} iterations!", flush=True)
             break
 
@@ -70,7 +55,6 @@ def compute_weights(
         mz_b_a[:, 0, 0], Vz_b_a[:, 0, 0] = compute_box_prior(mz_a[:, 0, 0], a, None, gamma_a)
         mz_b_s[:, 0, 0], Vz_b_s[:, 0, 0] = compute_box_prior(mz_s[:, 0, 0], None, b, gamma_b)
 
-    print("Optimization done with errors: ", w_err, z_f_err, z_a_err, z_s_err, flush=True)
-    return_dict[l] = mw
+    print("Optimization done with errors: ", wb_err, theta_err, a_err, b_err, flush=True)
 
-    # return mw.squeeze()
+    return mw.squeeze()
