@@ -5,7 +5,7 @@ from .prior import compute_box_prior
 
 
 def compute_weights(
-    C_theta, C_a, C_b, wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b, return_errors=False, max_iter=1000, tol=1e-3
+    C_theta, C_a, C_b, wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b, max_iter=1000, tol=1e-3
 ):
 
     N_theta, N_a, N_b = C_theta.size(0), C_a.size(0), C_b.size(0)
@@ -57,8 +57,5 @@ def compute_weights(
             break
 
     print("Errors: ", wb_err, theta_err, a_err, b_err, flush=True)
-
-    if return_errors:
-        return mw.squeeze(), (wb_err, theta_err, a_err, b_err)
 
     return mw.squeeze()

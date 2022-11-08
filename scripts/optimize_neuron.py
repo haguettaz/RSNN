@@ -12,8 +12,9 @@ from rsnn.spike_sequences.template import segment_spike_sequence
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Optimize over the weights of a recurrent neural network.")
-    parser.add_argument("--num_neurons", "-L", type=int, help="the number of neurons", default=250)
+    parser = argparse.ArgumentParser(description="Optimize over the weights of a spiking neuron.")
+    parser.add_argument("--num_neuron", "-l", type=int, help="the neuron to optimize")
+    parser.add_argument("--num_neurons", "-L", type=int, help="the number of neurons")
     parser.add_argument("--num_synapses", "-K", type=int, help="the number of synapses per neuron", default=500)
     parser.add_argument(
         "--alpha", type=int, help="the duration of the firing sequences in refractroy period", default=10
@@ -29,11 +30,15 @@ if __name__ == "__main__":
     impulse_resp = lambda t_: (t_ >= 0) * t_ / beta * torch.exp(1 - t_ / beta)
     impulse_resp_deriv = lambda t_: (t_ >= 0) * 1 / beta * (1 - t_ / beta) * torch.exp(1 - t_ / beta)
 
-    delays = torch.FloatTensor(args.num_neurons, args.num_synapses).uniform_(0, taub)
-    sources = torch.randint(0, args.num_neurons, (args.num_neurons, args.num_synapses))
+    torch.manual_seed(42)
+    delays = torch.load("delays.pt")
+    sources = torch.load("sources.pt")
 
-    torch.save(delays, f"delays.pt")
-    torch.save(sources, f"sources.pt")
+    if delays.shape[0] != args.num_neurons or delays.shape[1] != args.num_synapses:
+        raise ValueError("The number of neurons or synapses does not match the saved delays.")
+
+    if sources.shape[0] != args.num_neurons or sources.shape[1] != args.num_synapses:
+        raise ValueError("The number of neurons or synapses does not match the saved sources.")
 
     eps = 1  # firing surrounding window
     b = 0.0  # maximum level in silent period
@@ -47,20 +52,28 @@ if __name__ == "__main__":
     T = args.alpha * Tr
 
     # generate a random sequence of spikes
-    spike_sequences = sample_spike_sequences(args.num_neurons, T, Tr)
-    torch.save(spike_sequences, f"spike_sequences_{args.alpha}.pt")
+    spike_sequences = torch.load(f"spike_sequences_{args.alpha}.pt")
+
+    if spike_sequences.shape[0] != args.num_neurons or spike_sequences.shape[1] != T:
+        raise ValueError(
+            "The number of neurons or the duration of the spike sequences does not match the requirements."
+        )
 
     # compute the observation matrices and optimize for the weights
-    weights = torch.empty(args.num_neurons, args.num_synapses)
-    for l in range(args.num_neurons):
-        segmentation = segment_spike_sequence(spike_sequences[l], Tr, 1)
-        C_theta, C_a, C_b = compute_observation_matrices(
-            spike_sequences, segmentation, delays[l], sources[l], Tr, impulse_resp, impulse_resp_deriv
-        )
-        weights[l] = compute_weights(C_theta, C_a, C_b, wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b)
-        print(f"Neuron {l} optimization is done!", flush=True)
+    segmentation = segment_spike_sequence(spike_sequences[args.num_neuron], Tr, 1)
+    C_theta, C_a, C_b = compute_observation_matrices(
+        spike_sequences,
+        segmentation,
+        delays[args.num_neuron],
+        sources[args.num_neuron],
+        Tr,
+        impulse_resp,
+        impulse_resp_deriv,
+    )
+    weights = compute_weights(C_theta, C_a, C_b, wb, theta, a, b, gamma_wb, gamma_theta, gamma_a, gamma_b)
+    print("Neuron optimization is done!", flush=True)
 
-    torch.save(weights, f"weights_{args.alpha}.pt")
+    torch.save(weights, f"weights_{args.alpha}_{args.num_neuron}.pt")
 
     # references = [
     #     (torch.argwhere(spike_sequence).flatten()).tolist() for spike_sequence in torch.unbind(spike_sequences, -1)
