@@ -16,7 +16,7 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
         Vx_f (torch.FloatTensor): prior variances.
     """
     if xmin is None and xmax is None:
-        return mx, 1e9 * torch.ones_like(mx)
+        return mx, 1e12 * torch.ones_like(mx)
 
     if xmin is None:
         sigma2x_max = (mx - xmax).abs()
