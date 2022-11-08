@@ -1,18 +1,5 @@
-[tool.black]
-line-length = 150
-target-version = ['py37']
-
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 150
-
 [build-system]
-build-backend = 'setuptools.build_meta'
-requires = [
-    "setuptools >= 40.0.4",
-    "setuptools_scm >= 2.0.0, <4",
-    "wheel >= 0.29.0",
-]
+# These are the assumed default build requirements from pip:
+# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
