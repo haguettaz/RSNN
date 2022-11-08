@@ -1,8 +1,0 @@
-Metadata-Version: 2.1
-Name: rsnn
-Version: 1.0.0
-Summary: Description
-Description-Content-Type: text/markdown
-Provides-Extra: tests
-
-# Recurrent Spiking Neural Networks
