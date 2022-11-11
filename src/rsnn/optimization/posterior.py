@@ -1,24 +1,23 @@
-import torch
-
 def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, mz_b_a, Vz_b_a, mz_b_s, Vz_b_s, C_f, C_a, C_s):
     """
-    Returns posterior weight means and variances according to Table V in Loeliger2016.
+    Compute the weight posterior means and variances my forward Gaussian message passing.
 
     Args:
-        mw_f (_type_): prior weight mean with size (K).
-        Vw_f (_type_): prior weight variance with size (K, K).
-        mz_b_f (_type_): prior potential mean for firing times with size (N_f, 2, 1).
-        Vz_b_f (_type_): prior potential variance for firing times with size (N_f, 2, 2).
-        C_f (_type_): observation tensor for firing times with size (N_f, 2, K).
-        mz_b_a (_type_): prior potential mean for active times with size (N_a, 1, 1).
-        Vz_b_a (_type_): prior potential variance for active times with size (N_a, 1, 1).
-        C_a (torch.FloatTensor): observation tensor for active times with size (N_a, 1, K).
-        mz_b_s (_type_): prior potential mean for silent times with size (N_s, 1, 1).
-        Vz_b_s (_type_): prior potential variance for silent times with size (N_s, 1, 1).
-        C_s (_type_): observation tensor for silent times with size (N_s, 1, K).
+        mw_f (torch.FloatTensor): weight prior mean with one dimension of length K.
+        Vw_f (torch.FloatTensor): weight prior variances with one dimension of length K.
+        mz_b_f (torch.FloatTensor): firing observations (potential) prior means with one dimension of length N_f.
+        Vz_b_f (torch.FloatTensor): firing observations (potential) prior means with one dimension of length N_f.
+        mz_b_a (torch.FloatTensor): active observations (potential derivative) prior means with one dimension of length N_a.
+        Vz_b_a (torch.FloatTensor): active observations (potential derivative) prior variances with one dimension of length N_a.
+        mz_b_s (torch.FloatTensor): silent observations (potential) prior means with one dimension of length N_s.
+        Vz_b_s (torch.FloatTensor): silent observations (potential) prior variances with one dimension of length N_s.
+        C_f (torch.FloatTensor): firing observation tensor with two dimensions of length N_f and K.
+        C_a (torch.FloatTensor): firing observation tensor with two dimensions of length N_a and K.
+        C_s (torch.FloatTensor): firing observation tensor with two dimensions of length N_s and K.
 
     Returns:
-        _type_: _description_
+        (torch.FloatTensor): weight posterior means with one dimension of length K.
+        (torch.FloatTensor): weight posterior variances with one dimension of length K.
     """
     prev_mw_f = mw_f.clone()
     prev_Vw_f = Vw_f.diag()
@@ -44,7 +43,7 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, mz_b_a, Vz_b_a, mz_b_s,
 
 def fgmp_obs_blck(mx_f, Vx_f, my_b, Vy_b, A):
     """
-    Forward Gaussian message passing through an observation block (Table V in Loeliger2016) with scalar observation.
+    Forward Gaussian message passing through an observation block (Table V in Loeliger2016) with one scalar observation.
 
     Args:
         mx_f (_type_): X mean with one dimension of length K.
