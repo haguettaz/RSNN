@@ -3,7 +3,7 @@ import math
 import torch
 
 
-def compute_observation_matrices(spike_sequences, segmentation, delays, sources, Tr, impulse_resp, impulse_resp_deriv):
+def compute_observation_matrices(spike_sequences, segmentation, delays, sources, impulse_resp, impulse_resp_deriv, device=None):
     """
     Computes the observation matrices C_f (firing times), C_a (active times), and C_s (silent times).
 
@@ -100,7 +100,7 @@ def compute_observation_matrices(spike_sequences, segmentation, delays, sources,
     # # C_s = torch.zeros(N_s, 1, K)
     # C_b = impulse_resp(indices_s[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1).unsqueeze(dim=1)
 
-    return C_theta, C_a, C_b
+    return C_theta.to(device), C_a.to(device), C_b.to(device)
 
 
 # def get_indices_around_firing(spike_sequences, eps):

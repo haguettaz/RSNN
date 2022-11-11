@@ -4,24 +4,28 @@ import torch
 import torch.nn.functional as F
 
 
-def get_spiking_check_matrix(Nr):
-    """Returns the spiking-check matrix G.
+def get_spiking_matrix(Nr, p=None):
+    """
+    Returns the spiking matrix G.
 
     Args:
         Nr (int): refractory length.
+        p (float, optional): spiking probability. Defaults to None.
 
     Returns:
-        (torch.FloatTensor): the spiking-check matrix.
+        (torch.FloatTensor): the spiking matrix.
     """
     G = torch.zeros((Nr + 1, Nr + 1))
     G[1:, :-1] = torch.eye(Nr)
-    G[0, [0, -1]] = 1.0
+    G[0, 0] = 1 if p is None else 1 - p
+    G[0, -1] = 1 if p is None else p
     return G
 
 
 def get_phi0(Nr, tol=1e-12):
     """
     Returns the largest eigenvalue of the spike matrix G.
+    
     Args:
         Nr (int): refractory length.
         tol (float, optional): stopping criterion tolerance. Defaults to 1e-12.

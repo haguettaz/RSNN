@@ -1,6 +1,5 @@
 import torch
 
-
 def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
     """
     Returns prior messages corresponding to box constraints between xmin and xmax (inclusive).
@@ -18,25 +17,25 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
     if xmin is None and xmax is None:
         return mx, 1e12 * torch.ones_like(mx)
 
-    if xmin is None:
+    if xmin is None: # half-space
         sigma2x_max = (mx - xmax).abs()
         mx_f = xmax - sigma2x_max
         Vx_f = sigma2x_max / gamma
         return mx_f, Vx_f
 
-    if xmax is None:
+    if xmax is None: # half-space
         sigma2x_min = (mx - xmin).abs()
         mx_f = xmin + sigma2x_min
         Vx_f = sigma2x_min / gamma
         return mx_f, Vx_f
 
-    if xmin > xmax:
-        raise ValueError(f"xmin cannot be larger than xmax")
-
-    if xmin == xmax:  # equivalent to Laplace prior
+    if xmin == xmax: # laplace
         mx_f = xmin * torch.ones_like(mx)
         Vx_f = (mx - xmin).abs() / gamma
         return mx_f, Vx_f
+
+    if xmin > xmax: 
+        raise ValueError(f"xmin cannot be larger than xmax")
 
     sigma2x_min = (mx - xmin).abs()
     sigma2x_max = (mx - xmax).abs()

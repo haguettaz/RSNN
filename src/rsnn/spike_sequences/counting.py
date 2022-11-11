@@ -1,6 +1,6 @@
 import torch
 
-from .utils import get_phi0, get_spiking_check_matrix
+from .utils import get_phi0, get_spiking_matrix
 
 
 def get_cardinality(N, Nr, approx=True):
@@ -16,8 +16,6 @@ def get_cardinality(N, Nr, approx=True):
     """
 
     if approx:
-        phi0 = get_phi0(Nr)
-        return phi0 ** N
+        return get_phi0(Nr) ** N
 
-    G = get_spiking_check_matrix(Nr)
-    return torch.matrix_power(G, N).trace().item()
+    return get_spiking_matrix(Nr).matrix_power(N).trace().item()
