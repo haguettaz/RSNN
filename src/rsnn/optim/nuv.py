@@ -1,6 +1,6 @@
 import torch
 
-def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
+def box_prior(mx, xmin=None, xmax=None, gamma=1):
     """
     Returns prior messages corresponding to box constraints between xmin and xmax (inclusive).
 
@@ -44,7 +44,7 @@ def compute_box_prior(mx, xmin=None, xmax=None, gamma=1):
     return mx_f, Vx_f
 
 
-def compute_binary_prior(mx, Vx=None, xmin=0, xmax=1, update="am"):
+def binary_prior(mx, Vx=None, xmin=0, xmax=1, update="am"):
     """
     Returns prior messages corresponding to binary constraints between wmin and wmax.
 
@@ -81,7 +81,7 @@ def compute_binary_prior(mx, Vx=None, xmin=0, xmax=1, update="am"):
     return mx_f, Vx_f
 
 
-def compute_m_ary_prior(mx, Vx, xmin, xmax, M, update="am"):
+def m_ary_prior(mx, Vx, xmin, xmax, M, update="am"):
     """
     Returns prior messages corresponding to M-level constraints between wmin and wmax (inclusive).
 
@@ -110,7 +110,7 @@ def compute_m_ary_prior(mx, Vx, xmin, xmax, M, update="am"):
     Vx_f = torch.empty_like(mx)
 
     for m in range(M - 1):
-        mx_f[..., m, :], Vx_f[..., m, :] = compute_binary_prior(
+        mx_f[..., m, :], Vx_f[..., m, :] = binary_prior(
             mx[..., m, :], Vx[..., m, :] if update == "em" else None, xmin / (M - 1), xmax / (M - 1), update
         )
 

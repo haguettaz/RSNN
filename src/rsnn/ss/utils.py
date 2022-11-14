@@ -45,3 +45,20 @@ def get_phi0(Nr, tol=1e-12):
         dphi0 = f(phi0)
 
     return phi0
+
+def get_cardinality(N, Nr, approx=True):
+    """
+    Returns the cardinality of the set of periodic firing sequences.
+
+    Args:
+        N (int): the length.
+        Nr (int): the refractory period.
+
+    Returns:
+        (int): the cardinality.
+    """
+
+    if approx:
+        return get_phi0(Nr) ** N
+
+    return get_spiking_matrix(Nr).matrix_power(N).trace().item()

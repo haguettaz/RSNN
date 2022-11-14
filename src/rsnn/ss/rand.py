@@ -1,9 +1,9 @@
 import torch
 
-from .utils import get_phi0, get_spiking_matrix
+from .utils import get_spiking_matrix
 
 
-def sample_spike_sequences(L, N, Nr, p=0.5):
+def rand_ss(L, N, Nr, p=0.5):
     """
     Sample a multi-channel spike sequence uniformly at random.
 

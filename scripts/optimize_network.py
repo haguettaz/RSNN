@@ -2,13 +2,13 @@ import argparse
 
 import torch
 
-from rsnn.optimization.optimization import compute_weights
-from rsnn.optimization.utils import compute_observation_matrices
+from rsnn.optim.optim import compute_weights
+from rsnn.optim.utils import compute_observation_matrices
 
 # from rsnn.simulation.simulation import simulate
 # from rsnn.simulation.utils import compute_drift, get_input
-from rsnn.spike_sequences.sampling import sample_spike_sequences
-from rsnn.spike_sequences.template import segment_spike_sequence
+from rsnn.ss.rand import sample_spike_sequences
+from rsnn.ss.template import segment_spike_sequence
 
 if __name__ == "__main__":
 
