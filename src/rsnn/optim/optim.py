@@ -1,11 +1,6 @@
-import torch
-
 from .gmp import fgmp_obs_blck
-from .nuv import compute_box_prior
 
-
-def optimize(mw, C, nuv, err, max_iter=1000, err_tol=1e-3, return_err=False, device=None):
-
+def optim(mw, C, nuv, err, max_iter=1000, err_tol=1e-3, return_err=False, device=None):
     # Assume mw is initialized in the correct range
     C_f, C_a, C_s = C
     err_w, err_f, err_a, err_s = err
@@ -43,7 +38,7 @@ def optimize(mw, C, nuv, err, max_iter=1000, err_tol=1e-3, return_err=False, dev
 
         # stopping criterion
         if err_w(mw) < err_tol and err_f(mz_f) < err_tol and err_a(mz_a) < err_tol and err_s(mz_s) < err_tol:
-            print(f"Optimization problem solved after {itr} iterations!", flush=True)
+            # print(f"Optimization problem solved after {itr} iterations!", flush=True)
             break
 
     if return_err:
