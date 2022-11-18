@@ -1,6 +1,9 @@
+import torch
+
 from .gmp import fgmp_obs_blck
 
-def optim(mw, C, nuv, err, max_iter=1000, err_tol=1e-3, return_err=False, device=None):
+
+def optim(mw, C, nuv, err, max_iter=250, err_tol=1e-4, return_err=False, device=None):
     # Assume mw is initialized in the correct range
     C_f, C_a, C_s = C
     err_w, err_f, err_a, err_s = err
@@ -38,13 +41,9 @@ def optim(mw, C, nuv, err, max_iter=1000, err_tol=1e-3, return_err=False, device
 
         # stopping criterion
         if err_w(mw) < err_tol and err_f(mz_f) < err_tol and err_a(mz_a) < err_tol and err_s(mz_s) < err_tol:
-            # print(f"Optimization problem solved after {itr} iterations!", flush=True)
-            break
+            return mw
 
-    if return_err:
-        return mw, (err_w(mw), err_f(mz_f), err_a(mz_a), err_s(mz_s))
-
-    return mw
+    return None
 
 def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, mz_b_a, Vz_b_a, mz_b_s, Vz_b_s, C_f, C_a, C_s):
     """
@@ -67,24 +66,20 @@ def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, mz_b_a, Vz_b_a, mz_b_s,
         (torch.FloatTensor): weight posterior means with one dimension of length K.
         (torch.FloatTensor): weight posterior variances with one dimension of length K.
     """
-    prev_mw_f = mw_f.clone()
-    prev_Vw_f = Vw_f.diag()
+    Vw_f = Vw_f.diag()
 
     N_f, N_a, N_s = C_f.size(0), C_a.size(0), C_s.size(0)
 
     # Equality Constraints at Firing Times
     for n in range(N_f):
-        mw_f, Vw_f = fgmp_obs_blck(prev_mw_f, prev_Vw_f, mz_b_f[n], Vz_b_f[n], C_f[n])
-        prev_mw_f, prev_Vw_f = mw_f.clone(), Vw_f.clone()
+        mw_f, Vw_f = fgmp_obs_blck(mw_f, Vw_f, mz_b_f[n], Vz_b_f[n], C_f[n])
 
     # Unequality Constraints at Active Times
     for n in range(N_a):
-        mw_f, Vw_f = fgmp_obs_blck(prev_mw_f, prev_Vw_f, mz_b_a[n], Vz_b_a[n], C_a[n])
-        prev_mw_f, prev_Vw_f = mw_f.clone(), Vw_f.clone()
+        mw_f, Vw_f = fgmp_obs_blck(mw_f, Vw_f, mz_b_a[n], Vz_b_a[n], C_a[n])
 
     # Unequality Constraints at Silent Times
     for n in range(N_s):
-        mw_f, Vw_f = fgmp_obs_blck(prev_mw_f, prev_Vw_f, mz_b_s[n], Vz_b_s[n], C_s[n])
-        prev_mw_f, prev_Vw_f = mw_f.clone(), Vw_f.clone()
+        mw_f, Vw_f = fgmp_obs_blck(mw_f, Vw_f, mz_b_s[n], Vz_b_s[n], C_s[n])
 
     return mw_f, Vw_f.diag()

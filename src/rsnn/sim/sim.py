@@ -4,7 +4,7 @@ from torch.utils.cpp_extension import load
 
 sim_cpp = load(name="sim_cpp", sources=[__file__.replace(".py", ".cpp")], verbose=True)
 
-def sim(max_t, spike_sequences, sources, delays, weights, Tr, beta, theta, wb, sigma, eta):
+def sim(max_t, spike_sequences, sources, delays, weights, Tr, beta, theta, sigma, eta):
     """_summary_
 
     Args:
@@ -33,7 +33,6 @@ def sim(max_t, spike_sequences, sources, delays, weights, Tr, beta, theta, wb, s
         Tr, 
         beta, 
         theta, 
-        wb,
         eta,
     )
     return [torch.tensor(sim_firing_times[l]) for l in range(spike_sequences.size(0))]

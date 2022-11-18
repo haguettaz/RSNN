@@ -20,7 +20,8 @@ def fgmp_obs_blck(mx_f, Vx_f, my_b, Vy_b, A):
         raise ValueError("my_b must be a scalar.")
 
     Vx_f_At = Vx_f @ A
-    g = 1 / (Vy_b + Vx_f_At @ A + 1e-12) # a scalar
+    
+    g = 1 / (Vy_b + Vx_f_At @ A)
     
     mz_f = mx_f + g * (my_b - A @ mx_f) * Vx_f_At
     Vz_f = Vx_f - g * torch.outer(Vx_f_At, Vx_f_At)

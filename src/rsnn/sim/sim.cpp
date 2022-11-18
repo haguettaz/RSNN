@@ -14,18 +14,29 @@ double impulse_resp(double t, double beta) {
   return (t / beta) * exp(1 - t / beta);
 }
 
-vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double wb, double eta)
+vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double eta)
 {
-  // Counter for time steps, depends on the largest possible potential variation inbetween two consecutive time steps
 
   int L = sources.size(0);
   int K = sources.size(1);
 
-  vector<int> counter(L, 0); // for time step adaptation
-  vector<int>::iterator ptr_c;
   double t = 0; // simulation time
+
+  // Adaptive time step
+  // Note: the potential variation in-between two consecutive time steps is upper bounded by K * wb * exp(1) / beta
+  // In probability, we also have to include the spiking rate of the network, which can be approximated by 1 / Tr
+  // We get the following upper bound for the time step: K * wb * exp(1) / (beta * Tr)
+  // double gamma_c = beta * Tr / (exp(1) * DT * K * wb);
+
+  
+  vector<int> c(L, 0);
+  vector<double> gamma_c(L, 0);
+  vector<int>::iterator ptr_c;
+  vector<double>::iterator ptr_gc;
+
   double z; // neuron potential
   double tmp; // temporary time variable
+
   vector<vector<double>>::iterator ptr_f; // iterator for firing times
   vector<double>::reverse_iterator ptr_fs; // iterator for sources firing times
   double* ptr_w; // pointer to weights
@@ -36,9 +47,22 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
   mt19937 gen{rd()};
   normal_distribution<> d{0, eta};
 
+  // init gamma_c for neuron dependent adaptive time step
+  ptr_w = weights.data_ptr<double>();
+  ptr_gc = gamma_c.begin();
+  for (int l = 0; l < L; l++) {
+    for (int k=0; k<K; k++) {
+      if (*ptr_w > 0) *ptr_gc += *ptr_w;
+      ptr_w++;
+    }
+    *ptr_gc *= DT * exp(1) / beta;
+    ptr_gc++;
+  }
+
   do
   {
-    ptr_c = counter.begin();
+    ptr_c = c.begin();
+    ptr_gc = gamma_c.begin();
     ptr_f = firing_times.begin(); // init iterator for neuron firing times
     ptr_w = weights.data_ptr<double>(); // init pointer to weights
     ptr_d = delays.data_ptr<double>(); // init pointer to delays
@@ -50,20 +74,14 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
       if (*ptr_c > 0)
       {
         (*ptr_c)--;
-        ptr_f++;
-        ptr_c++;
-        ptr_w += K;
-        ptr_d += K;
-        ptr_s += K;
+        ptr_f++, ptr_c++, ptr_gc++;
+        ptr_w += K, ptr_d += K, ptr_s += K;
         continue;
       }
       if (ptr_f->size() && (t - *(ptr_f->end() - 1) < Tr)) // if the neuron is still recovering from its last spike
       {
-        ptr_f++;
-        ptr_c++;
-        ptr_w += K;
-        ptr_d += K;
-        ptr_s += K;
+        ptr_f++, ptr_c++, ptr_gc++;
+        ptr_w += K, ptr_d += K, ptr_s += K;
         continue;
       }
       z = d(gen); // continuous random potential noise
@@ -77,26 +95,15 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
           z += (*ptr_w) * impulse_resp(tmp, beta);
           ptr_fs++;
         }
-        ptr_w++;
-        ptr_d++;
-        ptr_s++;
+        ptr_w++, ptr_d++, ptr_s++;
       }
 
-      if (z >= theta)
-      {
-        ptr_f->push_back(t); // neuron is spiking
-        *ptr_c = 0; // reset time step counter
-      } 
-      else
-      {
-        // Note: the potential variation in-between two consecutive time steps is upper bounded by K * wb * exp(1) / beta
-        // *ptr_c = (int) ((theta - z) * beta * 0.3678 / (DT * K * wb));
-        // Note: the probability that all K inputs are firing at the same time is negligible and thus, we reduce the upper bound by a factor 10
-        *ptr_c = (int) ((theta - z) * beta * 3.678 / (DT * K * wb));
-      }
-      ptr_f++;
-      ptr_c++;
+      if (z >= theta) ptr_f->push_back(t); // neuron is spiking
+      else *ptr_c = (int) ((theta - z) / *ptr_gc); // adaptive time step
+
+      ptr_f++, ptr_c++, ptr_gc++;
     }
+    // cout << t << endl;
     t+=DT;
   } while (t < max_t);
 
