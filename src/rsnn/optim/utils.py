@@ -1,9 +1,6 @@
-import math
-
 import torch
 
-
-def compute_observation_matrices(spike_sequences, segmentation, delays, sources, Tr, impulse_resp, impulse_resp_deriv):
+def get_obs_mx(neuron_idx, spike_sequences, delays, sources, Tr, eps, impulse_resp, impulse_resp_deriv):
     """
     Computes the observation matrices C_f (firing times), C_a (active times), and C_s (silent times).
 
@@ -12,42 +9,44 @@ def compute_observation_matrices(spike_sequences, segmentation, delays, sources,
         delays (torch.FloatTensor): delays with size (K).
         sources (torch.IntTensor): sources with size (K).
         Tr (int): refractory period.
+        eps (int): length of the firing surrounding window.
         impulse_resp (function): impulse response function.
         impulse_resp_deriv (function): derivative of the impulse response function.
+        device (torch.device, optional): device on which to put the observation tensors. Defaults to None.
 
     Returns:
-        C_f (torch.FloatTensor): observation tensor for firing times with size (N_f, 2, K).
-        C_a (torch.FloatTensor): observation tensor for active times with size (N_a, 1, K).
-        C_s (torch.FloatTensor): observation tensor for silent times with size (N_s, 1, K).
+        C_f (torch.FloatTensor): observation tensor for firing times with size (N_f, K).
+        C_a (torch.FloatTensor): observation tensor for active times with size (N_a, K).
+        C_s (torch.FloatTensor): observation tensor for silent times with size (N_s, K).
     """
-    T = spike_sequences.size(1)
+
+    N = spike_sequences.size(1)
     K = sources.size(0)
 
+    indices_f, indices_a, indices_s = parse_ss(spike_sequences[neuron_idx], Tr, eps)
+    
     # Observation matrices at firing times
-    firing_indices = torch.argwhere(segmentation == 0).view(-1, 1)
-    N_theta = firing_indices.size(0)
-    C_theta = torch.empty(N_theta, 1, K)
+    N_f = indices_f.size(0)
+    C_f = torch.empty(N_f, K)
     for k in range(K):
-        C_theta[:, 0, k] = impulse_resp(
-            (firing_indices - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % T
+        C_f[:, k] = impulse_resp(
+            (indices_f.view(-1, 1) - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % N
         ).sum(dim=-1)
 
     # Observation matrices at active times
-    active_indices = torch.argwhere(segmentation < 2).view(-1, 1)
-    N_a = active_indices.size(0)
-    C_a = torch.empty(N_a, 1, K)
+    N_a = indices_a.size(0)
+    C_a = torch.empty(N_a, K)
     for k in range(K):
-        C_a[:, 0, k] = impulse_resp_deriv(
-            (active_indices - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % T
+        C_a[:, k] = impulse_resp_deriv(
+            (indices_a.view(-1, 1) - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % N
         ).sum(dim=-1)
 
     # Observation matrices at silent times
-    silent_indices = torch.argwhere(segmentation == 2).view(-1, 1)
-    N_b = silent_indices.size(0)
-    C_b = torch.empty(N_b, 1, K)
+    N_s = indices_s.size(0)
+    C_s = torch.empty(N_s, K)
     for k in range(K):
-        C_b[:, 0, k] = impulse_resp(
-            (silent_indices - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % T
+        C_s[:, k] = impulse_resp(
+            (indices_s.view(-1, 1) - torch.argwhere(spike_sequences[sources[k]]).view(1, -1) - delays[k]) % N
         ).sum(dim=-1)
 
     # # compute distance to the M-last firing times in the network referential
@@ -82,9 +81,9 @@ def compute_observation_matrices(spike_sequences, segmentation, delays, sources,
     # # compute C_f, observation matrices for firing times (class 0)
     # indices_f = torch.argwhere(segmentation == 0).flatten()
     # # N_f = indices_f.size(0)
-    # C_theta = impulse_resp(indices_f[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1).unsqueeze(dim=1)
-    # print(C_theta.abs().sum(dim=[1, 2]))
-    # # C_theta = torch.zeros(N_f, 2, K)
+    # C_f = impulse_resp(indices_f[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1).unsqueeze(dim=1)
+    # print(C_f.abs().sum(dim=[1, 2]))
+    # # C_f = torch.zeros(N_f, 2, K)
     # # C_f[:, 0] = impulse_resp(indices_f[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1)
     # # C_f[:, 1] = impulse_resp_deriv(indices_f[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1)
 
@@ -98,9 +97,51 @@ def compute_observation_matrices(spike_sequences, segmentation, delays, sources,
     # indices_s = torch.argwhere(segmentation == 2).flatten()
     # # N_s = indices_s.size(0)
     # # C_s = torch.zeros(N_s, 1, K)
-    # C_b = impulse_resp(indices_s[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1).unsqueeze(dim=1)
+    # C_s = impulse_resp(indices_s[:, None, None] - rel_firing_times[None, :, :]).sum(dim=-1).unsqueeze(dim=1)
 
-    return C_theta, C_a, C_b
+    return C_f, C_a, C_s
+
+
+def parse_ss(ss, Nr, eps):
+    """
+    Segment spike sequence into four categories: (0) firing times, (1) active times, (2) silent times, and (3) refractory times.
+
+    Args:
+        spike_sequence (torch.BoolTensor): spike sequences with size (N).
+        Nr (int): length of the refractory period.
+        eps (int): length of the firing surrounding window.
+
+    Returns:
+        (torch.ByteTensor): segmentation tensor with size (N)
+    """
+
+    N = ss.size(0)
+
+    indices_f = torch.argwhere(ss).flatten()
+
+    # set silent times (class 2)
+    sgm = 2 * torch.ones(N, dtype=torch.uint8)
+
+    # set refractory times (class 3)
+    indices_r = (indices_f[None, :] + torch.arange(Nr + 1)[:, None]).flatten() % N
+    sgm[indices_r] = 3
+
+    # set active times (class 1)
+    indices_a = (indices_f[None, :] + torch.arange(-eps, eps + 1)[:, None]).flatten() % N
+    sgm[indices_a] = 1
+
+    # set firing times (class 0)
+    sgm[indices_f] = 0
+
+    return torch.argwhere(sgm == 0).flatten(), torch.argwhere(sgm < 2).flatten(), torch.argwhere(sgm == 2).flatten()
+
+
+def test_parse_ss():
+    assert parse_ss(
+        torch.tensor([False, False, False, False, True, False, False, False, True, False]), 
+        2, 
+        1
+    ) == (torch.tensor([4, 8]), torch.tensor([3, 4, 5, 7, 8, 9]), torch.tensor([1, 2]))
 
 
 # def get_indices_around_firing(spike_sequences, eps):
