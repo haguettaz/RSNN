@@ -1,7 +1,7 @@
 import torch
 
-from rsnn.ss.rand import rand_ss
-from rsnn.ss.utils import get_cardinality, get_phi0, get_spiking_matrix
+from rsnn.ss.rand import *
+from rsnn.ss.utils import *
 
 
 def test_rand_ss():
