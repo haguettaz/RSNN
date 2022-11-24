@@ -5,34 +5,20 @@ from rsnn.ss.utils import *
 
 
 def test_rand_ss():
-    ss = rand_ss(20, 100, 10, 0.5)
-    assert ss.shape == (20, 100)
-    assert ss.dtype == torch.bool
+    # ss = rand_ss(5000, 10000, 10, 0.8)
+    # assert ss.shape == (5000, 10000)
+    # assert ss.dtype == torch.bool
+    # assert (ss.sum(dim=0) / 5000 - 0.8/(1 + 0.8 * 10)).abs().mean().item() <1e-2 # empirical spiking rate is close to p/(1+p*Nr)
+    # assert (ss.sum(dim=1) / (10000 - ss.sum(dim=1) * 10) - 0.8).abs().mean().item() < 1e-2 # empirical spiking probability is close to p
 
-    ss = rand_ss(1, 100000, 10, 0.5)
-    assert ss.shape == (1, 100000)
-    assert ss.dtype == torch.bool
-    assert (ss.sum() / (100000 - ss.sum() * 10) - 0.5 < 0.01)
+    # assert rand_ss(1, 100, 10, 0).sum() == 0
+    # assert rand_ss(1, 100, 9, 1).sum() == 10
+    
+    ss = rand_ss(10000, 10, 2, 0.5)
+    _, counts = torch.unique(ss, dim=0, return_counts=True)
+    print(counts)
+    
 
-    ss = rand_ss(1, 100000, 10, 0.8)
-    assert ss.shape == (1, 100000)
-    assert ss.dtype == torch.bool
-    assert (ss.sum() / (100000 - ss.sum() * 10) - 0.8 < 0.01)
-
-    ss = rand_ss(1, 100000, 10, 0.2)
-    assert ss.shape == (1, 100000)
-    assert ss.dtype == torch.bool
-    assert (ss.sum() / (100000 - ss.sum() * 10) - 0.2 < 0.01)
-
-    ss = rand_ss(1, 1000, 10, 0)
-    assert ss.shape == (1, 1000)
-    assert ss.dtype == torch.bool
-    assert ss.sum() == 0
-
-    ss = rand_ss(1, 1000, 9, 1)
-    assert ss.shape == (1, 1000)
-    assert ss.dtype == torch.bool
-    assert ss.sum() == 100
 
 def test_get_spiking_matrix():
     G = get_spiking_matrix(10)

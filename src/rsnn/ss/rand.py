@@ -1,9 +1,9 @@
 import torch
 
-from .utils import get_spiking_matrix
+from .utils import get_phi0, get_spiking_matrix
 
 
-def rand_ss(L, N, Nr, p=0.5):
+def rand_ss(L, N, Nr, p=None):
     """
     Sample a multi-channel spike sequence uniformly at random.
 
@@ -22,7 +22,11 @@ def rand_ss(L, N, Nr, p=0.5):
     i_z = torch.empty((L, N), dtype=torch.long)
 
     # First sample z0 by marginalizing over (z_1, ..., z_{N-1})
-    G = get_spiking_matrix(Nr, p)  # The largest eigenvalue of G is 1, as this a (right) stochastic matrix
+    if p is None:
+        G = get_spiking_matrix(Nr) / get_phi0(Nr) # Rescale G to have largest eigenvalue 1
+    else:
+        G = get_spiking_matrix(Nr, p) # The largest eigenvalue of G is 1, as this a (right) stochastic matrix
+    
     pz = G.matrix_power(N).diag()
 
     if pz.max() == 0:

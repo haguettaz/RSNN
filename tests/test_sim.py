@@ -5,20 +5,8 @@ from rsnn.sim.utils import *
 
 
 def test_compute_drift():
-    ref_ftimes = torch.tensor([0, 2, 5])
-
-    sim_ftimes = torch.tensor([0.6, 2.6, 5.6])
-    drift = compute_drift(ref_ftimes, sim_ftimes, 6)
-    assert (drift - 0.6).abs() < 1e-6
-
-    sim_ftimes = torch.tensor([0.6, 2.6, 5.6, 6.6, 8.6, 11.6])
-    drift = compute_drift(ref_ftimes, sim_ftimes, 6)
-    assert (drift - 0.6).abs() < 1e-6
-
-    sim_ftimes = torch.tensor([0.2, 2.8])
-    drift = compute_drift(ref_ftimes, sim_ftimes, 6)
-    assert drift is torch.nan
-
-    sim_ftimes = torch.tensor([11.997, 14.007, 16.999])
-    drift = compute_drift(ref_ftimes, sim_ftimes, 6)
-    assert (drift - 1e-3).abs() < 1e-6
+    ref_ftimes = torch.tensor([  1,  22,  43,  67,  88, 111, 132, 157, 178]) 
+    sim_ftimes = torch.tensor([-199.0000, -178.0000, -157.0000, -133.0000, -112.0000, -89.0000, -68.0000, -43.0000, -22.0000, 1.0012,  22.0014,  43.0031, 67.0034,  88.0048, 111.0053, 132.0082, 156.0930, 178.0103, 200.9970, 221.9968, 243.0107, 267.0042, 288.0099, 311.0116, 332.0140, 356.0977, 378.0154])
+    drift = compute_drift(ref_ftimes, sim_ftimes, 200)
+    assert len(drift) == 1
+    assert abs(drift[0] + 0.0936) < 1e-4

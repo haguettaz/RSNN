@@ -14,7 +14,7 @@ double impulse_resp(double t, double beta) {
   return (t / beta) * exp(1 - t / beta);
 }
 
-vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double eta)
+vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double eta, uint seed)
 {
 
   int L = sources.size(0);
@@ -43,9 +43,8 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
   double* ptr_d; // pointer to delays
   int* ptr_s; // pointer to sources
 
-  random_device rd{};
-  mt19937 gen{rd()};
-  normal_distribution<> d{0, eta};
+  mt19937 gen{seed};
+  normal_distribution<double> d{0, eta};
 
   // init gamma_c for neuron dependent adaptive time step
   ptr_w = weights.data_ptr<double>();

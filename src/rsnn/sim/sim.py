@@ -4,7 +4,7 @@ from torch.utils.cpp_extension import load
 
 sim_cpp = load(name="sim_cpp", sources=[__file__.replace(".py", ".cpp")], verbose=True)
 
-def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, eta):
+def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, eta, seed):
     """_summary_
 
     Args:
@@ -35,6 +35,7 @@ def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, 
         beta, 
         theta, 
         eta,
+        seed
     )
     return [torch.tensor(sim_ftimes[l]) for l in range(L)]
 
@@ -51,7 +52,7 @@ def init_sim_ftimes(ref_ftimes, sigma, T):
     L = len(ref_ftimes)
     sim_ftimes = []
     for l in range(L):
-        Nf = ref_ftimes[l].size(0)
+        Nf = ref_ftimes[l].nelement()
         sim_ftimes.append(((ref_ftimes[l] + sigma * torch.randn(Nf)) % T - T).tolist())
         
     return sim_ftimes
