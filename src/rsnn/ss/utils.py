@@ -16,13 +16,18 @@ def get_spiking_matrix(Nr, p=None):
         (torch.FloatTensor): the spiking matrix.
     """
     G = torch.zeros((Nr + 1, Nr + 1))
-    G[1:, :-1] = torch.eye(Nr)
-    G[0, 0] = 1 if p is None else 1 - p
-    G[0, -1] = 1 if p is None else p
+    if p is None:
+        G[1:, :-1] = torch.eye(Nr) 
+        G[0, 0] = 1
+        G[0, -1] = 1
+    else:
+        G[1:, :-1] = torch.eye(Nr)*(1-p)
+        G[0, 0] = 1 - p
+        G[0, -1] = p
     return G
 
 
-def get_phi0(Nr, tol=1e-12):
+def get_phi0(Nr, p=None, tol=1e-12):
     """
     Returns the largest eigenvalue of the spike matrix G.
     
@@ -33,10 +38,13 @@ def get_phi0(Nr, tol=1e-12):
     Returns:
         (float): largest eigenvalue phi0 of the spike matrix G.
     """
-    f = lambda phi_: (phi_ - 1 - phi_ ** (-Nr)) / (Nr + 1 - Nr * phi_ ** (-1))
+    if p is None:
+        f = lambda phi_: (phi_**(Nr+1) - phi_**Nr - 1) / ((Nr + 1)*phi_**Nr - Nr * phi_ ** (Nr-1))
+        phi0 = (Nr + 2)**(1 / (Nr + 1))
+    else:    
+        f = lambda phi_: (phi_**(Nr+1) - (1-p)*phi_**(Nr) - p*(1-p)**Nr) / ((Nr + 1)*phi_**Nr - Nr * (1-p)* phi_ ** (Nr-1))
+        phi0 = 1
 
-    # Initialization with the tight upper bound
-    phi0 = (Nr + 2) ** (1 / (Nr + 1))
     dphi0 = f(phi0)
 
     # Newton iteration

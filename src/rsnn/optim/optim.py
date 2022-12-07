@@ -3,7 +3,7 @@ import torch
 from .gmp import fgmp_obs_blck
 
 
-def optim(mw, C, nuv, err, max_iter=250, err_tol=1e-4, return_err=False, device=None):
+def optim(mw, C, nuv, err, max_iter=250, err_tol=1e-4, device=None):
     # Assume mw is initialized in the correct range
     C_f, C_a, C_s = C
     err_w, err_f, err_a, err_s = err
@@ -41,9 +41,9 @@ def optim(mw, C, nuv, err, max_iter=250, err_tol=1e-4, return_err=False, device=
 
         # stopping criterion
         if err_w(mw) < err_tol and err_f(mz_f) < err_tol and err_a(mz_a) < err_tol and err_s(mz_s) < err_tol:
-            return mw
+            return itr, mw
 
-    return None
+    return None, None
 
 def compute_weight_posterior(mw_f, Vw_f, mz_b_f, Vz_b_f, mz_b_a, Vz_b_a, mz_b_s, Vz_b_s, C_f, C_a, C_s):
     """

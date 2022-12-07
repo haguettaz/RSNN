@@ -21,12 +21,9 @@ def rand_ss(L, N, Nr, p=None):
 
     i_z = torch.empty((L, N), dtype=torch.long)
 
-    # First sample z0 by marginalizing over (z_1, ..., z_{N-1})
-    if p is None:
-        G = get_spiking_matrix(Nr) / get_phi0(Nr) # Rescale G to have largest eigenvalue 1
-    else:
-        G = get_spiking_matrix(Nr, p) # The largest eigenvalue of G is 1, as this a (right) stochastic matrix
+    G = get_spiking_matrix(Nr, p) / get_phi0(Nr, p) # Rescale G to have largest eigenvalue 1
     
+    # First sample z0 by marginalizing over (z_1, ..., z_{N-1})
     pz = G.matrix_power(N).diag()
 
     if pz.max() == 0:

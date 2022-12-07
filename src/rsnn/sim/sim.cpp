@@ -14,7 +14,7 @@ double impulse_resp(double t, double beta) {
   return (t / beta) * exp(1 - t / beta);
 }
 
-vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double eta, uint seed)
+vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double sigma_z, uint seed)
 {
 
   int L = sources.size(0);
@@ -44,7 +44,7 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
   int* ptr_s; // pointer to sources
 
   mt19937 gen{seed};
-  normal_distribution<double> d{0, eta};
+  normal_distribution<double> d{0, pow(sigma_z, 2)};
 
   // init gamma_c for neuron dependent adaptive time step
   ptr_w = weights.data_ptr<double>();
@@ -77,7 +77,7 @@ vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times
         ptr_w += K, ptr_d += K, ptr_s += K;
         continue;
       }
-      if (ptr_f->size() && (t - *(ptr_f->end() - 1) < Tr)) // if the neuron is still recovering from its last spike
+      if (ptr_f->size() && (t - *(ptr_f->end() - 1) <= Tr)) // if the neuron is still recovering from its last spike
       {
         ptr_f++, ptr_c++, ptr_gc++;
         ptr_w += K, ptr_d += K, ptr_s += K;

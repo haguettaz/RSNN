@@ -123,7 +123,7 @@ def parse_ss(ss, Nr, eps):
     sgm = 2 * torch.ones(N, dtype=torch.uint8)
 
     # set refractory times (class 3)
-    indices_r = (indices_f[None, :] + torch.arange(Nr + 1)[:, None]).flatten() % N
+    indices_r = (indices_f[None, :] + torch.arange(eps + 1, Nr + 1)[:, None]).flatten() % N
     sgm[indices_r] = 3
 
     # set active times (class 1)

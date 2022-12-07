@@ -4,7 +4,7 @@ from torch.utils.cpp_extension import load
 
 sim_cpp = load(name="sim_cpp", sources=[__file__.replace(".py", ".cpp")], verbose=True)
 
-def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, eta, seed):
+def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma_0, sigma_z, seed):
     """_summary_
 
     Args:
@@ -24,7 +24,7 @@ def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, 
         _type_: _description_
     """
     L = sources.size(0)
-    sim_ftimes = init_sim_ftimes(ref_ftimes, sigma, T)
+    sim_ftimes = init_sim_ftimes(ref_ftimes, sigma_0, T)
     sim_ftimes = sim_cpp.sim_cpp(
         max_t,
         sim_ftimes,
@@ -34,17 +34,17 @@ def sim(max_t, ref_ftimes, sources, delays, weights, Tr, T, beta, theta, sigma, 
         Tr, 
         beta, 
         theta, 
-        eta,
+        sigma_z,
         seed
     )
     return [torch.tensor(sim_ftimes[l]) for l in range(L)]
 
-def init_sim_ftimes(ref_ftimes, sigma, T):
+def init_sim_ftimes(ref_ftimes, sigma_0, T):
     """_summary_
 
     Args:
         spike_sequences (_type_): _description_
-        sigma (_type_): _description_
+        sigma_0 (_type_): _description_
 
     Returns:
         _type_: _description_
@@ -53,6 +53,7 @@ def init_sim_ftimes(ref_ftimes, sigma, T):
     sim_ftimes = []
     for l in range(L):
         Nf = ref_ftimes[l].nelement()
-        sim_ftimes.append(((ref_ftimes[l] + sigma * torch.randn(Nf)) % T - T).tolist())
+        init_ftimes = ref_ftimes[l] - T + sigma_0 * torch.randn(Nf)
+        sim_ftimes.append(init_ftimes.clamp(None, -1e-6).tolist())
         
     return sim_ftimes
