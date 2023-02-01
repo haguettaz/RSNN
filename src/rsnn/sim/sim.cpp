@@ -7,106 +7,122 @@
 
 using namespace std;
 
-double DT = 1e-5;
+double DELTA = 1e-5;
 
 double impulse_resp(double t, double beta) {
   if (t <= 0) return 0;
   return (t / beta) * exp(1 - t / beta);
 }
 
-vector<vector<double>> sim_cpp(double max_t, vector<vector<double>> firing_times, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double sigma_z, uint seed)
+vector<vector<double>> sim_cpp(double t0, double tmax, vector<vector<double>> spikes, torch::Tensor sources, torch::Tensor delays, torch::Tensor weights, double Tr, double beta, double theta, double etab)
 {
-
   int L = sources.size(0);
   int K = sources.size(1);
 
-  double t = 0; // simulation time
+  double t = t0; // simulation time
 
   // Adaptive time step
   // Note: the potential variation in-between two consecutive time steps is upper bounded by K * wb * exp(1) / beta
   // In probability, we also have to include the spiking rate of the network, which can be approximated by 1 / Tr
   // We get the following upper bound for the time step: K * wb * exp(1) / (beta * Tr)
-  // double gamma_c = beta * Tr / (exp(1) * DT * K * wb);
-
+  // double counts_step = beta * Tr / (exp(1) * DT * K * wb);
   
-  vector<int> c(L, 0);
-  vector<double> gamma_c(L, 0);
-  vector<int>::iterator ptr_c;
-  vector<double>::iterator ptr_gc;
+  vector<int> counts(L, 0);
+  vector<double> counts_step(L, etab);
+  vector<int>::iterator ptr_counts;
+  vector<double>::iterator ptr_counts_step;
 
   double z; // neuron potential
   double tmp; // temporary time variable
 
-  vector<vector<double>>::iterator ptr_f; // iterator for firing times
-  vector<double>::reverse_iterator ptr_fs; // iterator for sources firing times
-  double* ptr_w; // pointer to weights
-  double* ptr_d; // pointer to delays
-  int* ptr_s; // pointer to sources
+  vector<vector<double>>::iterator ptr_spikes; // iterator for firing times
+  vector<double>::reverse_iterator ptr_spikes_sources; // iterator for sources firing times
+  int* ptr_sources; // pointer to sources
+  double* ptr_delays; // pointer to delays
+  double* ptr_weights; // pointer to weights
 
-  mt19937 gen{seed};
-  normal_distribution<double> d{0, pow(sigma_z, 2)};
+  std::default_random_engine generator;
+  normal_distribution<double> distribution{0, etab/10};
 
-  // init gamma_c for neuron dependent adaptive time step
-  ptr_w = weights.data_ptr<double>();
-  ptr_gc = gamma_c.begin();
+  // init counts_step for neuron dependent adaptive time step
+  ptr_weights = weights.data_ptr<double>();
+  ptr_counts_step = counts_step.begin();
   for (int l = 0; l < L; l++) {
     for (int k=0; k<K; k++) {
-      if (*ptr_w > 0) *ptr_gc += *ptr_w;
-      ptr_w++;
+      if (*ptr_weights > 0) *ptr_counts_step += *ptr_weights;
+      ptr_weights++;
     }
-    *ptr_gc *= DT * exp(1) / beta;
-    ptr_gc++;
+    *ptr_counts_step *= DELTA * exp(1) / beta;
+    ptr_counts_step++;
   }
 
   do
   {
-    ptr_c = c.begin();
-    ptr_gc = gamma_c.begin();
-    ptr_f = firing_times.begin(); // init iterator for neuron firing times
-    ptr_w = weights.data_ptr<double>(); // init pointer to weights
-    ptr_d = delays.data_ptr<double>(); // init pointer to delays
-    ptr_s = sources.data_ptr<int>(); // init pointer to sources
+    ptr_counts = counts.begin();
+    ptr_counts_step = counts_step.begin();
+    ptr_spikes = spikes.begin(); // init iterator for neuron firing times
+    ptr_weights = weights.data_ptr<double>(); // init pointer to weights
+    ptr_delays = delays.data_ptr<double>(); // init pointer to delays
+    ptr_sources = sources.data_ptr<int>(); // init pointer to sources
 
     // For each neuron
     for(int l=0; l<L; l++)
     {
-      if (*ptr_c > 0)
+      // if the neuron is still driven by an external input
+      if (ptr_spikes->size() && (*(ptr_spikes->end() - 1) >= t)) 
       {
-        (*ptr_c)--;
-        ptr_f++, ptr_c++, ptr_gc++;
-        ptr_w += K, ptr_d += K, ptr_s += K;
+        ptr_spikes++, ptr_counts++, ptr_counts_step++;
+        ptr_weights += K, ptr_delays += K, ptr_sources += K;
         continue;
       }
-      if (ptr_f->size() && (t - *(ptr_f->end() - 1) <= Tr)) // if the neuron is still recovering from its last spike
+
+      // if the neuron cannot be about to spike
+      if (*ptr_counts > 0)
       {
-        ptr_f++, ptr_c++, ptr_gc++;
-        ptr_w += K, ptr_d += K, ptr_s += K;
+        (*ptr_counts)--;
+        ptr_spikes++, ptr_counts++, ptr_counts_step++;
+        ptr_weights += K, ptr_delays += K, ptr_sources += K;
         continue;
       }
-      z = d(gen); // continuous random potential noise
+
+      // if the neuron is still recovering from its last spike
+      if (ptr_spikes->size() && (t - *(ptr_spikes->end() - 1) <= Tr)) 
+      {
+        ptr_spikes++, ptr_counts++, ptr_counts_step++;
+        ptr_weights += K, ptr_delays += K, ptr_sources += K;
+        continue;
+      }
+
+      // the noise on the potential is a white (truncated) Gaussian noise
+      do
+      {
+        z = distribution(generator);
+      } while (z > etab);
+
       for (int k=0; k<K; k++)
       {
-        ptr_fs = firing_times[*ptr_s].rbegin();
-        while (ptr_fs != firing_times[*ptr_s].rend())
+        ptr_spikes_sources = spikes[*ptr_sources].rbegin();
+        while (ptr_spikes_sources != spikes[*ptr_sources].rend())
         {
-          tmp = t - *ptr_fs - *ptr_d;
+          tmp = t - *ptr_spikes_sources - *ptr_delays;
           if (tmp > Tr) break;
-          z += (*ptr_w) * impulse_resp(tmp, beta);
-          ptr_fs++;
+          z += (*ptr_weights) * impulse_resp(tmp, beta);
+          ptr_spikes_sources++;
         }
-        ptr_w++, ptr_d++, ptr_s++;
+        ptr_weights++, ptr_delays++, ptr_sources++;
       }
 
-      if (z >= theta) ptr_f->push_back(t); // neuron is spiking
-      else *ptr_c = (int) ((theta - z) / *ptr_gc); // adaptive time step
+      if (z >= theta) ptr_spikes->push_back(t); // neuron is spiking
+      else *ptr_counts = (int) ((theta - z) / *ptr_counts_step); // adaptive time step
 
-      ptr_f++, ptr_c++, ptr_gc++;
+      ptr_spikes++, ptr_counts++, ptr_counts_step++;
     }
-    // cout << t << endl;
-    t+=DT;
-  } while (t < max_t);
+    t+=DELTA;
+  } while (t < tmax);
 
-  return firing_times;
+  cout << "Simulation completed." << endl;
+
+  return spikes;
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
