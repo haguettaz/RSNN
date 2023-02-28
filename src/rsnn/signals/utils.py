@@ -1,7 +1,6 @@
 # coding=utf-8
 
-import torch
-import torch.nn.functional as F
+import numpy as np
 
 
 def get_spiking_matrix(Nr, p=None):
@@ -13,15 +12,15 @@ def get_spiking_matrix(Nr, p=None):
         p (float, optional): spiking probability. Defaults to None.
 
     Returns:
-        (torch.FloatTensor): the spiking matrix.
+        (np.FloatTensor): the spiking matrix.
     """
-    G = torch.zeros((Nr + 1, Nr + 1))
+    G = np.zeros((Nr + 1, Nr + 1))
     if p is None:
-        G[1:, :-1] = torch.eye(Nr) 
+        G[1:, :-1] = np.eye(Nr) 
         G[0, 0] = 1
         G[0, -1] = 1
     else:
-        G[1:, :-1] = torch.eye(Nr)*(1-p)
+        G[1:, :-1] = np.eye(Nr)*(1-p)
         G[0, 0] = 1 - p
         G[0, -1] = p
     return G
@@ -53,20 +52,3 @@ def get_phi0(Nr, p=None, tol=1e-12):
         dphi0 = f(phi0)
 
     return phi0
-
-def get_cardinality(N, Nr, approx=True):
-    """
-    Returns the cardinality of the set of periodic firing sequences.
-
-    Args:
-        N (int): the length.
-        Nr (int): the refractory period.
-
-    Returns:
-        (int): the cardinality.
-    """
-
-    if approx:
-        return get_phi0(Nr) ** N
-
-    return get_spiking_matrix(Nr).matrix_power(N).trace().item()

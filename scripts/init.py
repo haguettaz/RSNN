@@ -2,7 +2,7 @@ import argparse
 
 import torch
 
-from rsnn.ss.rand import sample_spike_sequences
+from rsnn.signals.spike_train import sample_spike_sequences
 
 if __name__ == "__main__":
 

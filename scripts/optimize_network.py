@@ -4,10 +4,9 @@ import torch
 
 from rsnn.optim.optim import compute_weights
 from rsnn.optim.utils import compute_observation_matrices
-
 # from rsnn.simulation.simulation import simulate
 # from rsnn.simulation.utils import compute_drift, get_input
-from rsnn.ss.rand import sample_spike_sequences
+from rsnn.signals.spike_train import sample_spike_sequences
 from rsnn.ss.template import segment_spike_sequence
 
 if __name__ == "__main__":

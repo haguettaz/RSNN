@@ -1,7 +1,7 @@
 import torch
 
-from rsnn.ss.rand import *
-from rsnn.ss.utils import *
+from rsnn.signals.spike_train import *
+from rsnn.signals.utils import *
 
 
 def test_rand_ss():
