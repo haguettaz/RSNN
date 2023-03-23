@@ -1,43 +1,39 @@
+import os
 import pickle
 
+# import numpy as np
 
-def circle_pairwise_generator(iterable):
-    length = len(iterable)
-    for i in range(length):
-        yield iterable[i], iterable[(i + 1) % length]
-
-
-def firing_times_generator(firing_times, duration):
-    for t in firing_times:
-        yield t % duration
+# def circle_pairwise_generator(iterable):
+#     length = len(iterable)
+#     for i in range(length):
+#         yield iterable[i], iterable[(i + 1) % length]
 
 
-def active_times_generator(firing_times, active_min, active_max, step, duration):
-    for ft in firing_times:
-        t = ft
-        while t >= ft + active_min:
-            yield t % duration
-            t -= step
-
-        t = ft + step
-        while t <= ft + active_max:
-            yield t % duration
-            t += step
+# def times_generator(times, modulo):
+#     for t in times:
+#         yield t % modulo
 
 
-def silent_times_generator(firing_times, active_min, refractory_period, step, duration):
-    for ft1, ft2 in circle_pairwise_generator(firing_times):
-        while ft2 < ft1:
-            ft2 += duration
+# def surrounding_times_generator(times, left, right, step, modulo):
+#     for t1 in times:
+#         for t in np.arange(t1 + left, t1 + right + step, step):
+#             yield t % modulo
 
-        t = ft1 + refractory_period
-        while t <= ft2 + active_min:
-            yield t % duration
-            t += step
 
-def save(filename, data):
+# def complement_surrounding_times_generator(times, left, right, step, modulo):
+#     for t1, t2 in circle_pairwise_generator(times):
+#         while t2 < t1:
+#             t2 += modulo
+
+#         for t in np.arange(t1 + right + step, t2 + left, step):
+#             yield t % modulo
+
+def save(obj, filename):
+    if os.path.dirname(filename) != '':
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
     with open(filename, 'wb') as f:
-        pickle.dump(data, f)
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 def load(filename):
     with open(filename, 'rb') as f:
