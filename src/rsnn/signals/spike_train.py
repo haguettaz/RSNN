@@ -11,9 +11,20 @@ class SpikeTrain:
 
         self.num_channels = num_channels
         self.duration = duration
+
         self.firing_rate = firing_rate
         self.hard_refractory_period = hard_refractory_period
         self.soft_refractory_period = soft_refractory_period
+
+        if self.soft_refractory_period > 0:
+            self.hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * (1 - np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period )) # self.hazard function = conditional firing rate
+            self.Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * self.soft_refractory_period * ((t_ - self.hard_refractory_period) / self.soft_refractory_period + np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period) - 1)
+        else:
+            self.hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate
+            self.Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * t_
+
+        self.q = lambda t_ : self.hazard(t_) * np.exp(-self.Hazard(t_))
+        self.Q = lambda t_ : 1 - np.exp(- self.Hazard(t_))
 
         self.firing_times = [np.array([]) for _ in range(num_channels)]
 
@@ -21,18 +32,9 @@ class SpikeTrain:
         # 0. initialize
         self.firing_times = []
 
-        if self.soft_refractory_period > 0:
-            hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * (1 - np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period )) # hazard function = conditional firing rate
-            Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * self.soft_refractory_period * ((t_ - self.hard_refractory_period) / self.soft_refractory_period + np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period) - 1)
-        else:
-            hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate
-            Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * t_
-
-        q = lambda t_ : hazard(t_) * np.exp(-Hazard(t_)) # pdf
-
         # assume a spike occurs at time 0, create a spike train of duration 2*duration
         t = np.arange(0, rmax*self.duration, res)
-        qt = norm(q(t))
+        qt = norm(self.q(t))
 
         for _ in range(self.num_channels):  # for each channel
             # uniformly chose the window's origin s0 in between -rmax*duration and 0
@@ -47,9 +49,20 @@ class PeriodicSpikeTrain:
 
         self.num_channels = num_channels
         self.period = period
+
         self.firing_rate = firing_rate
         self.hard_refractory_period = hard_refractory_period
         self.soft_refractory_period = soft_refractory_period
+
+        if self.soft_refractory_period > 0:
+            self.hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * (1 - np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period )) # self.hazard function = conditional firing rate
+            self.Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * self.soft_refractory_period * ((t_ - self.hard_refractory_period) / self.soft_refractory_period + np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period) - 1)
+        else:
+            self.hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate
+            self.Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * t_
+
+        self.q = lambda t_ : self.hazard(t_) * np.exp(-self.Hazard(t_))
+        self.Q = lambda t_ : 1 - np.exp(- self.Hazard(t_))
 
         self.firing_times = [np.array([]) for _ in range(num_channels)]
     
@@ -57,19 +70,9 @@ class PeriodicSpikeTrain:
         # 0. initialize
         self.firing_times = []
 
-        if self.soft_refractory_period > 0:
-            hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * (1 - np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period )) # hazard function = conditional firing rate
-            Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * self.soft_refractory_period * ((t_ - self.hard_refractory_period) / self.soft_refractory_period + np.exp(-(t_ - self.hard_refractory_period) / self.soft_refractory_period) - 1)
-        else:
-            hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate
-            Hazard = lambda t_ : (t_ >= self.hard_refractory_period) * self.firing_rate * t_
-
-        q = lambda t_ : hazard(t_) * np.exp(-Hazard(t_))
-        Q = lambda t_ : 1 - np.exp(- Hazard(t_))
-
         # implicit zero padding with rmax
         t = (np.arange(0, self.period, res)[None,:] + self.period * np.arange(rmax)[:,None]).flatten()
-        qt = norm(q(t))
+        qt = norm(self.q(t))
         idx = np.ceil(self.period/res).astype(int) # index in t corresponding to period
 
         # 1. compute the forward messages 
@@ -87,7 +90,7 @@ class PeriodicSpikeTrain:
         # 3. sample per channels
         for _ in range(self.num_channels):
             # 3.a. is there any spike?
-            if self.rng.binomial(1, Q(self.period)) == 0:
+            if self.rng.binomial(1, self.Q(self.period)) == 0:
                 self.firing_times.append(np.array([]))
                 continue
                 
@@ -98,7 +101,7 @@ class PeriodicSpikeTrain:
             s = np.empty(n)
             s[-1] = self.period
             for m in range(n-2, -1, -1):
-                psm = norm(msgf[m] * q(s[m+1] - t))
+                psm = norm(msgf[m] * self.q(s[m+1] - t))
                 s[m] = self.rng.choice(t, p=psm)
                 
             # 3.d independently, sample the origin of the sequence s0, and cyclically shift the sequence
