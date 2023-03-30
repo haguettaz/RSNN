@@ -13,7 +13,7 @@ def solve(
         b: np.ndarray,
         weights_lim: Tuple[float, float],
         weights_lvl: Optional[float]=None,
-        max_iter: int = 1000, 
+        max_iter: int = 500, 
         err_tol: float = 1e-4,
         rng: np.random.Generator = None
         # C_firing: np.ndarray,
@@ -93,9 +93,6 @@ def solve(
             # pbar.update(max_iter - itr)
             return mw
         
-        # pbar.update(1)
-
-        # print("Optimization failed: max iterations reached")
     raise ValueError("Optimization failed with maximum number of iterations reached")
 
 def compute_weight_posterior(C, mw_forward, Vw_forward, mz_backward, Vz_backward):

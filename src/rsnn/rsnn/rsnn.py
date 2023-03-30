@@ -67,9 +67,6 @@ class Neuron:
         res[np.any((0 < t) * (t <= self.hard_refractory_period), axis=-1)] = -np.inf
         return res
 
-    # def refractory_resp_deriv(self, t):
-    #     return - self.refractory_weight * self.somatic_decay * np.sum((t > 0) * np.exp(- t * self.somatic_decay), axis=-1)
-
     def impulse_resp(self, t):
         if self.somatic_decay == self.synaptic_decay:
             return self.gamma * np.sum((t > 0) * t * np.exp(1 - t / self.somatic_decay), axis=-1)
@@ -83,12 +80,6 @@ class Neuron:
             return self.gamma * np.sum((t > 0) * (- np.exp(- t / self.somatic_decay) / self.somatic_decay + np.exp(- t / self.synaptic_decay) / self.synaptic_decay), axis=-1)
 
     def potential(self, t):
-        # z = - self.refractory_resp((t - self.firing_times))
-        # or is it faster to first create input and then inner product?
-        # for k in range(self.num_synapses):
-        #     # firing times must be of shape (1, n) while t must be of shape (m, 1) (sum over axis=1 is faster)
-        #     z += self.weights[k] * self.impulse_resp(t[:,None] - self.sources[k].firing_times[None,:] - self.delays[k])
-        # return z
         if self.num_synapses == 0:
             return np.zeros_like(t)
 
@@ -98,17 +89,6 @@ class Neuron:
 
         y = np.array([self.impulse_resp(t[:,None] - self.sources[k].firing_times[None,:] - self.delays[k]) for k in range(self.num_synapses)])
         return self.weights @ y + self.refractory_resp((t[:,None] - self.firing_times[None,:]))
-    
-    # def potential_deriv(self, t):
-    #     # z = - self.refractory_resp_deriv((t - self.firing_times))
-    #     # # or is it faster to first create input and then inner product?
-    #     # for k in range(self.num_synapses):
-    #     #     # firing times must be of shape (1, n) while t must be of shape (m, 1) (sum over axis=1 is faster)
-    #     #     z += self.weights[k] * self.impulse_resp_deriv(t[:,None] - self.sources[k].firing_times[None,:] - self.delays[k])
-    #     # return z
-    
-    #     y = np.array([self.impulse_resp_deriv(t[:,None] - self.sources[k].firing_times[None,:] - self.delays[k]) for k in range(self.num_synapses)])
-    #     return np.inner(y, self.weights) - self.refractory_resp_deriv((t[:,None] - self.firing_times[None,:]))
     
     def step(self, t, dt, noise_std, tol=1e-6):
         z = self.potential(t)
@@ -129,66 +109,6 @@ class Neuron:
             self.firing_times = np.append(self.firing_times, ft)
             self.noisy_firing_threshold = self.firing_threshold + self.rng.normal(0, noise_std)
 
-
-    # def add_firing_time(self, t_left, noise_left, t_right, noise_right, tol):
-    #     # cut interval in half
-    #     t_mid = (t_left + t_right) / 2
-        
-    #     # interpolate noise at t_mid
-    #     mean = (noise_left * (t_right - t_mid) + noise_right * (t_mid - t_left)) / (t_right - t_left)
-    #     std = self.noise_std * math.sqrt((t_mid - t_left) * (t_right - t_mid) / (t_right - t_left))
-    #     noise_mid = self.rng.normal(mean, std)
-    #     while noise_mid < self.noise_min or noise_mid > self.noise_max:
-    #         noise_mid = self.rng.normal(mean, std)
-
-    #     # get noisy potential at t_mid
-    #     z_mid = self.potential(t_mid) + noise_mid
-
-    #     if abs(z_mid - self.firing_threshold) < tol or abs(t_right - t_left) < tol:
-    #         self.firing_times = np.append(self.firing_times, t_mid)
-    #         return
-
-    #     # recursive call on left or right interval
-    #     if z_mid > self.firing_threshold:
-    #         self.add_firing_time(t_left, noise_left, t_mid, noise_mid, tol)
-    #     else:
-    #         self.add_firing_time(t_mid, noise_mid, t_right, noise_right, tol)
-
-    # def clear_firing_times(self):
-    #     self.firing_times = np.array([])
-
-    # def clear_firing_patterns(self):
-    #     self.firing_patterns = []
-    #     self.durations_patterns = []
-
-    # def set_firing_patterns(self, firing_patterns, durations_patterns):
-    #     self.firing_patterns = [np.array(firing_pattern) for firing_pattern in firing_patterns]
-    #     self.durations_patterns = durations_patterns
-
-    # def set_firing_times(self, firing_times):
-    #     self.firing_times = np.array(firing_times)
-
-    # def set_num_active_spikes(self, tol):
-    #     self.num_active_spikes = 0
-    #     for neuron in self.targets:
-    #         synapses = [k for k in range(neuron.num_synapses) if neuron.sources[k] is self]
-    #         tmp = np.min(neuron.delays[synapses]) / self.refractory_period + 1
-    #         while sum([neuron.weights[k] * neuron.impulse_resp[k](tmp * self.refractory_period - neuron.delays[k]) for k in synapses]) > tol:
-    #             tmp += 1
-    #         if tmp > self.num_active_spikes:
-    #             self.num_active_spikes = tmp     
-    #     return self.num_active_spikes   
-
-    # def active_spikes(self, t, idx):
-    #     last_idx = np.searchsorted((t - self.firing_patterns[idx]) % self.duration_patterns[idx], 0, side="right")
-    #     for i in range(self.num_active_spikes):
-    #         yield self.firing_patterns[idx][(last_idx - i) % self.firing_patterns[idx].size]
-
-    # def source_spike_influence(self, t, source, s):
-    #     return np.nansum([self.weights[k] * self.impulse_resp(t - s - self.delays[k], k) for k in range(self.num_synapses) if self.sources[k] is source])
-
-    # def source_spike_influence_deriv(self, t, source, s):
-    #     return np.nansum([self.weights[k] * self.impulse_resp_deriv(t - s - self.delays[k], k) for k in range(self.num_synapses) if self.sources[k] is source])
 
     def memorize(
             self, 
@@ -229,60 +149,6 @@ class Neuron:
             active_y = np.array([self.impulse_resp_deriv((active_times[:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])
             C = np.concatenate((C, firing_y.T, silent_y.T, active_y.T), axis=0)
 
-            # if spike_train.firing_times[self.idx].size > 0:
-            #     # firing time itself
-            #     for t in spike_train.firing_times[self.idx]:
-            #         y = np.array([self.impulse_resp((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #         C = np.append(C, y, axis=0)
-            #         a = np.append(a, self.firing_threshold + self.refractory_resp((t - spike_train.firing_times[self.idx]) % spike_train.period))
-            #         b = np.append(b, self.firing_threshold + self.refractory_resp((t - spike_train.firing_times[self.idx]) % spike_train.period))
-
-            #     for t in np.arange(0, spike_train.period, dt):
-            #         diff = np.abs(t - spike_train.firing_times[self.idx])
-            #         dist = np.minimum(diff, spike_train.period - diff)
-            #         ft_idx = np.argmin(dist)
-
-            #         # eps-close to a firing time
-            #         if dist[ft_idx] < eps:
-            #             y = np.array([self.impulse_resp_deriv((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #             C = np.append(C, y, axis=0)
-            #             a = np.append(a, slope)
-            #             b = np.append(b, np.inf)
-                    
-            #         # complementary case
-            #         else:
-            #             y = np.array([self.impulse_resp((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #             C = np.append(C, y, axis=0)
-            #             a = np.append(a, -np.inf)
-            #             b = np.append(b, self.firing_threshold + self.refractory_resp((t - spike_train.firing_times[self.idx]) % spike_train.period) - level)
-
-            # else:
-            #     for t in np.arange(0, spike_train.period, dt):
-            #         y = np.array([self.impulse_resp((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #         C = np.append(C, y, axis=0)
-            #         a = np.append(a, -np.inf)
-            #         b = np.append(b, self.firing_threshold + self.refractory_resp((t - spike_train.firing_times[self.idx]) % spike_train.period) - level)
-        
-
-            # # for t in times_generator(spike_train.firing_times[self.idx], spike_train.period):
-            # #     y = np.array([self.impulse_resp((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            # #     C = np.append(C, y, axis=0)
-            # #     a = np.append(a, self.firing_threshold + self.refractory_resp(t - spike_train.firing_times[self.idx]))
-            #     b = np.append(b, self.firing_threshold + self.refractory_resp(t - spike_train.firing_times[self.idx]))
-            #     print(t, self.refractory_resp(t - spike_train.firing_times[self.idx]))
-
-            # for t in surrounding_times_generator(spike_train.firing_times[self.idx], -eps, eps, res, spike_train.period):
-            #     y = np.array([self.impulse_resp_deriv((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #     C = np.append(C, y, axis=0)
-            #     a = np.append(a, slope)
-            #     b = np.append(b, np.inf)
-
-            # for t in complement_surrounding_times_generator(spike_train.firing_times[self.idx], -eps, eps, res, spike_train.period):
-            #     y = np.array([self.impulse_resp((t - spike_train.firing_times[self.sources[k].idx] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])[None,:]
-            #     C = np.append(C, y, axis=0)
-            #     a = np.append(a, -np.inf)
-            #     b = np.append(b, self.firing_threshold + self.refractory_resp(t - spike_train.firing_times[self.idx]) - level)
-
         assert C.shape[0] == a.shape[0] == b.shape[0]
         assert C.shape[0] > 0        
 
@@ -300,14 +166,6 @@ class Neuron:
             self.rng
             )
         
-        # print(f"Optimization of neuron {self.idx} finished with status {status}")
-
-    # def run(self, t, time_step, tol):
-    #     # TODO: using derivative instead of analytical solution?
-    #     self.eta[1] = forward_OU(self.eta[0], time_step)
-    #     if self.potential(t) > self.firing_threshold:
-    #         self.add_firing_time(t - time_step, self.noise_prev, t, noise, tol)
-
 class Network:
     def __init__(
             self, 
@@ -384,68 +242,6 @@ class Network:
             neuron.weights = np.zeros(neuron.num_synapses)
             for neuron_src in set(neuron.sources):
                 neuron_src.targets.append(neuron)
-
-    # def clear_firing_times(self):
-    #     for neuron in self.neurons:
-    #         neuron.clear_firing_times()
-
-    # def clear_firing_patterns(self):
-    #     for neuron in self.neurons:
-    #         neuron.clear_firing_patterns()
-
-    # def set_firing_times(self, spike_train: List[List[float]]):
-    #     for neuron in self.neurons:
-    #         neuron.set_firing_times(firing_times[neuron.idx])
-
-    # def set_firing_patterns(self, firing_patterns: List[List[np.ndarray]]):
-    #     self.num_firing_patterns = len(firing_patterns)
-    #     for neuron in self.neurons:
-    #         neuron.set_firing_patterns([firing_pattern[neuron.idx] for firing_pattern in firing_patterns])
-
-    # def get_stability_matrices(self, tol=1e-6):
-    #     for neuron in self.neurons:
-    #         neuron.set_num_active_spikes(tol)
-        
-    #     # set matrix dimension and indices
-    #     dim = np.sum([neuron.num_active_spikes for neuron in self.neurons])
-    #     indices = np.cumsum([0] + [neuron.num_active_spikes for neuron in self.neurons])
-
-    #     # one stability matrix for each firing pattern
-    #     stability_matrices = []
-    #     for i in range(self.num_firing_patterns):
-    #         # extract all firing times of the network (plus the associated neurons) and sort them by time
-    #         firing_times = []
-    #         firing_neurons = []
-    #         for neuron in self.neurons:
-    #             firing_times.append(neuron.firing_patterns[i])
-    #             firing_neurons.append(np.full_like(neuron.firing_patterns[i], neuron.idx))
-    #         firing_times = np.concatenate(firing_times)
-    #         firing_neurons = np.concatenate(firing_neurons).astype(int)
-            
-    #         Phi = np.identity(dim)
-    #         for t in np.unique(firing_times):
-    #             # sorted according to indices
-    #             mask = (firing_times == t)
-
-    #             firing_neurons_indices = indices[firing_neurons[mask]]
-
-    #             A = np.identity(dim)
-    #             # for neurons that fire at time t
-    #             for idx in firing_neurons_indices:
-    #                 neuron = self.get_neuron(idx)
-    #                 # compute influence of all active spikes of the sources on the new last spike
-    #                 for source in set(neuron.sources):
-    #                     for j, s in enumerate(source.active_spikes):
-    #                         A[idx, indices[source.idx] + j] = neuron.spike_influence_deriv(t, source, s)
-                    
-    #                 # shift all last spikes of the neuron by one
-    #                 for j in range(1, neuron.num_active_spikes):
-    #                     A[idx + j] = np.roll(A[idx + j], 1)
-
-    #             Phi = A @ Phi
-
-    #         stability_matrices.append(Phi)
-    #     return stability_matrices
 
     def memorize(
             self, 
