@@ -19,7 +19,7 @@ def get_stability_matrix(network, spike_train):
         return res
 
     def get_index(neuron_idx, firing_time):
-        return np.argwhere(spike_train.firing_times[neuron_idx] == firing_time) + cum_num_firing_times[neuron_idx]
+        return np.argwhere(spike_train.firing_times[neuron_idx] % spike_train.duration == firing_time) + cum_num_firing_times[neuron_idx]
 
     cum_num_firing_times = np.cumsum([0] + [spike_train.num_spikes(neuron.idx) for neuron in network.neurons])
     firing_times = np.unique(np.concatenate(spike_train.firing_times))
@@ -32,10 +32,11 @@ def get_stability_matrix(network, spike_train):
         A = np.identity(cum_num_firing_times[-1])
         for neuron in dict_firing_times[ft]:
             for neuron_src in network.neurons:
+                firing_times_src = spike_train.firing_times[neuron_src.idx]
+                firing_times_src[firing_times_src >= ft] -= spike_train.duration
                 for ft_src in spike_train.firing_times[neuron_src.idx]:
                     A[get_index(neuron.idx, ft), get_index(neuron_src.idx, ft_src)] = get_jitter_influence(neuron, ft, neuron_src, ft_src)
-            A /= A.sum(axis=1, keepdims=True)
-
+        A /= A.sum(axis=1, keepdims=True)
         Phi = A @ Phi
 
     return Phi
