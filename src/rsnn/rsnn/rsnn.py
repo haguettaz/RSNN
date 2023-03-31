@@ -67,6 +67,16 @@ class Neuron:
         res[np.any((0 < t) * (t <= self.hard_refractory_period), axis=-1)] = -np.inf
         return res
 
+    def refractory_resp_deriv(self, t):
+        if (t.ndim < 2):
+            if np.any((0 < t) * (t <= self.hard_refractory_period)):
+                return 0
+            return self.soft_refractory_weight / self.soft_refractory_period * np.sum(((t - self.hard_refractory_period) > 0) * np.exp(- (t - self.hard_refractory_period) / self.soft_refractory_period))
+
+        res = self.soft_refractory_weight / self.soft_refractory_period * np.sum(((t - self.hard_refractory_period) > 0) * np.exp(- (t - self.hard_refractory_period) / self.soft_refractory_period), axis=-1)
+        res[np.any((0 < t) * (t <= self.hard_refractory_period), axis=-1)] = 0
+        return res
+    
     def impulse_resp(self, t):
         if self.somatic_decay == self.synaptic_decay:
             return self.gamma * np.sum((t > 0) * t * np.exp(1 - t / self.somatic_decay), axis=-1)
@@ -131,22 +141,22 @@ class Neuron:
         a, b, C = np.empty(0), np.empty(0), np.empty((0, self.num_synapses))
 
         for spike_train in spike_trains:
-            silent_times = sphere_intersection_complement(spike_train.firing_times[self.idx], eps, spike_train.period, dt)
-            active_times = sphere_intersection(spike_train.firing_times[self.idx], eps, spike_train.period, dt)
+            silent_times = sphere_intersection_complement(spike_train.firing_times[self.idx], eps, spike_train.duration, dt)
+            active_times = sphere_intersection(spike_train.firing_times[self.idx], eps, spike_train.duration, dt)
             
-            firing_min = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.period)
+            firing_min = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
             silent_min = np.full_like(silent_times, -np.inf)
             active_min = np.full_like(active_times, slope)
             a = np.concatenate((a, firing_min.T, silent_min.T, active_min.T), axis=0)
 
-            firing_max = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.period)
-            silent_max = self.firing_threshold - level - self.refractory_resp((silent_times[:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.period)
+            firing_max = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
+            silent_max = self.firing_threshold - level - self.refractory_resp((silent_times[:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
             active_max = np.full_like(active_times, np.inf)
             b = np.concatenate((b, firing_max.T, silent_max.T, active_max.T), axis=0)
 
-            firing_y = np.array([self.impulse_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])
-            silent_y = np.array([self.impulse_resp((silent_times[:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])
-            active_y = np.array([self.impulse_resp_deriv((active_times[:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.period) for k in range(self.num_synapses)])
+            firing_y = np.array([self.impulse_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.duration) for k in range(self.num_synapses)])
+            silent_y = np.array([self.impulse_resp((silent_times[:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.duration) for k in range(self.num_synapses)])
+            active_y = np.array([self.impulse_resp_deriv((active_times[:,None] - spike_train.firing_times[self.sources[k].idx][None,:] - self.delays[k]) % spike_train.duration) for k in range(self.num_synapses)])
             C = np.concatenate((C, firing_y.T, silent_y.T, active_y.T), axis=0)
 
         assert C.shape[0] == a.shape[0] == b.shape[0]
@@ -161,9 +171,7 @@ class Neuron:
             b,
             (np.full(self.num_synapses, self.weights_min), np.full(self.num_synapses, self.weights_max)),
             self.weights_lvl,
-            1000, 
-            1e-4,
-            self.rng
+            rng=self.rng
             )
         
 class Network:

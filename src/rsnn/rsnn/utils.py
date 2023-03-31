@@ -1,45 +1,41 @@
+import numpy as np
+from tqdm.autonotebook import tqdm
 
-    # def get_stability_matrices(self, tol=1e-6):
-    #     for neuron in self.neurons:
-    #         neuron.set_num_active_spikes(tol)
+
+def get_stability_matrix(network, spike_train):
+    # assumptions: 
+    # - causal network
+    # - a spike older than spike_train.duration does not influence (directly) the network anymore
+
+    def get_jitter_influence(neuron, ft, neuron_src, ft_src):
+        res = 0.0
+        if neuron == neuron_src:
+            res += neuron.refractory_resp_deriv((ft - ft_src) % spike_train.duration) # should take into account the refractoriness...
         
-    #     # set matrix dimension and indices
-    #     dim = np.sum([neuron.num_active_spikes for neuron in self.neurons])
-    #     indices = np.cumsum([0] + [neuron.num_active_spikes for neuron in self.neurons])
+        for k in range(neuron.num_synapses):
+            if neuron.sources[k] == neuron_src:
+                res += neuron.weights[k] * neuron.impulse_resp_deriv((ft - ft_src - neuron.delays[k]) % spike_train.duration)
 
-    #     # one stability matrix for each firing pattern
-    #     stability_matrices = []
-    #     for i in range(self.num_firing_patterns):
-    #         # extract all firing times of the network (plus the associated neurons) and sort them by time
-    #         firing_times = []
-    #         firing_neurons = []
-    #         for neuron in self.neurons:
-    #             firing_times.append(neuron.firing_patterns[i])
-    #             firing_neurons.append(np.full_like(neuron.firing_patterns[i], neuron.idx))
-    #         firing_times = np.concatenate(firing_times)
-    #         firing_neurons = np.concatenate(firing_neurons).astype(int)
-            
-    #         Phi = np.identity(dim)
-    #         for t in np.unique(firing_times):
-    #             # sorted according to indices
-    #             mask = (firing_times == t)
+        return res
 
-    #             firing_neurons_indices = indices[firing_neurons[mask]]
+    def get_index(neuron_idx, firing_time):
+        return np.argwhere(spike_train.firing_times[neuron_idx] == firing_time) + cum_num_firing_times[neuron_idx]
 
-    #             A = np.identity(dim)
-    #             # for neurons that fire at time t
-    #             for idx in firing_neurons_indices:
-    #                 neuron = self.get_neuron(idx)
-    #                 # compute influence of all active spikes of the sources on the new last spike
-    #                 for source in set(neuron.sources):
-    #                     for j, s in enumerate(source.active_spikes):
-    #                         A[idx, indices[source.idx] + j] = neuron.spike_influence_deriv(t, source, s)
-                    
-    #                 # shift all last spikes of the neuron by one
-    #                 for j in range(1, neuron.num_active_spikes):
-    #                     A[idx + j] = np.roll(A[idx + j], 1)
+    cum_num_firing_times = np.cumsum([0] + [spike_train.num_spikes(neuron.idx) for neuron in network.neurons])
+    firing_times = np.unique(np.concatenate(spike_train.firing_times))
+    dict_firing_times = {}
+    for ft in firing_times:
+        dict_firing_times[ft] = [neuron for neuron in network.neurons if ft in spike_train.firing_times[neuron.idx]]
 
-    #             Phi = A @ Phi
+    Phi = np.identity(cum_num_firing_times[-1])
+    for ft in tqdm(firing_times):
+        A = np.identity(cum_num_firing_times[-1])
+        for neuron in dict_firing_times[ft]:
+            for neuron_src in network.neurons:
+                for ft_src in spike_train.firing_times[neuron_src.idx]:
+                    A[get_index(neuron.idx, ft), get_index(neuron_src.idx, ft_src)] = get_jitter_influence(neuron, ft, neuron_src, ft_src)
+            A /= A.sum(axis=1, keepdims=True)
 
-    #         stability_matrices.append(Phi)
-    #     return stability_matrices
+        Phi = A @ Phi
+
+    return Phi
