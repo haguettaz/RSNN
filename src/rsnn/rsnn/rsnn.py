@@ -7,7 +7,6 @@ from tqdm.autonotebook import tqdm
 from ..optim.optim import solve
 from ..signals.spike_train import SpikeTrain
 from ..signals.utils import sphere_intersection, sphere_intersection_complement
-from ..utils.utils import load, save
 
 
 class Neuron:
