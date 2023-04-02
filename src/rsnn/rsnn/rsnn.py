@@ -1,4 +1,4 @@
-import hashlib
+import os
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -7,6 +7,7 @@ from tqdm.autonotebook import tqdm
 from ..optim.optim import solve
 from ..signals.spike_train import SpikeTrain
 from ..signals.utils import sphere_intersection, sphere_intersection_complement
+from ..utils.utils import load, save
 
 
 class Neuron:
@@ -222,25 +223,7 @@ class Network:
                 ) for l in range(self.num_neurons)]
         
         self.connect()
-                
-    def __repr__(self):
-        string = "Network("
-        string += f"num_neurons={self.num_neurons}, "
-        string += f"num_synapses={self.num_synapses}, "
-        string += f"firing_threshold={self.firing_threshold}, "
-        string += f"synaptic_decay={self.synaptic_decay}, "
-        string += f"somatic_decay={self.somatic_decay}, "
-        string += f"delays_lim={self.delays_lim}, "
-        string += f"hard_refractory_period={self.hard_refractory_period}, "
-        string += f"soft_refractory_period={self.soft_refractory_period}, "
-        string += f"soft_refractory_weight={self.soft_refractory_weight}, "
-        string += f"weights_lim={self.weights_lim}, "
-        string += f"weights_lvl={self.weights_lvl})"
-        return string
-        
-    def __hash__(self):
-        return hashlib.md5(self.__repr__().encode('utf-8')).hexdigest()
-
+            
     def connect(self):
         # set source neurons (with weights and delays)
         for neuron in self.neurons:
@@ -248,8 +231,21 @@ class Network:
             neuron.sources = [self.neurons[source] for source in sources]
             neuron.delays = self.rng.uniform(neuron.delays_min, neuron.delays_max, neuron.num_synapses)
             neuron.weights = np.zeros(neuron.num_synapses)
-            for neuron_src in set(neuron.sources):
-                neuron_src.targets.append(neuron)
+
+    def save(self, dirname):
+        os.makedirs(dirname, exist_ok=True)
+        for neuron in self.neurons:
+            np.save(os.path.join(dirname, f"sources_{neuron.idx}.npy"), np.array([src.idx for src in neuron.sources]))
+            np.save(os.path.join(dirname, f"delays_{neuron.idx}.npy"), neuron.delays)
+            np.save(os.path.join(dirname, f"weights_{neuron.idx}.npy"), neuron.weights)
+            np.save(os.path.join(dirname, f"firing_times_{neuron.idx}.npy"), neuron.firing_times)
+
+    def load(self, dirname):            
+        for neuron in self.neurons:
+            neuron.sources = [self.neurons[src_idx] for src_idx in np.load(os.path.join(dirname, f"sources_{neuron.idx}.npy"))]
+            neuron.delays = np.load(os.path.join(dirname, f"delays_{neuron.idx}.npy"))
+            neuron.weights = np.load(os.path.join(dirname, f"weights_{neuron.idx}.npy"))
+            neuron.firing_times = np.load(os.path.join(dirname, f"firing_times_{neuron.idx}.npy"))
 
     def memorize(
             self, 

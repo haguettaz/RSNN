@@ -1,7 +1,9 @@
+import os
 from typing import Optional, Union
 
 import numpy as np
 
+from ..utils.utils import load, save
 from .utils import norm
 
 
@@ -45,6 +47,15 @@ class SpikeTrain:
         if c is None:
             return np.unique(np.concatenate(self.firing_times)).size
         return np.unique(self.firing_times[c]).size
+    
+    def save(self, dirname):
+        os.makedirs(dirname, exist_ok=True)
+        for c in range(self.num_channels):
+            np.save(os.path.join(dirname, f"firing_times_{c}.npy"), self.firing_times[c])
+
+    def load(self, dirname):
+        for c in range(self.num_channels):
+            self.firing_times[c] = np.load(os.path.join(dirname, f"firing_times_{c}.npy"))
 
     def random(self, res=1e-2, rmax=1):
         # 0. initialize
