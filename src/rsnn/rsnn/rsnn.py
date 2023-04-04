@@ -233,18 +233,22 @@ class Network:
 
     def save(self, dirname):
         os.makedirs(dirname, exist_ok=True)
-        for neuron in self.neurons:
-            np.save(os.path.join(dirname, f"sources_{neuron.idx}.npy"), np.array([src.idx for src in neuron.sources]))
-            np.save(os.path.join(dirname, f"delays_{neuron.idx}.npy"), neuron.delays)
-            np.save(os.path.join(dirname, f"weights_{neuron.idx}.npy"), neuron.weights)
-            np.save(os.path.join(dirname, f"firing_times_{neuron.idx}.npy"), neuron.firing_times)
+        np.savez_compressed(os.path.join(dirname, "delays.npz"), **{f"delays_{neuron.idx}": neuron.delays for neuron in self.neurons})
+        np.savez_compressed(os.path.join(dirname, "weights.npz"), **{f"weights_{neuron.idx}": neuron.weights for neuron in self.neurons})
+        np.savez_compressed(os.path.join(dirname, "sources.npz"), **{f"sources_{neuron.idx}": np.array([src.idx for src in neuron.sources]) for neuron in self.neurons})
+        np.savez_compressed(os.path.join(dirname, "firing_times.npz"), **{f"firing_times_{neuron.idx}": neuron.firing_times for neuron in self.neurons})
 
-    def load(self, dirname):            
+    def load(self, dirname):   
+        delays = np.load(os.path.join(dirname, "delays.npz"))
+        weights = np.load(os.path.join(dirname, "weights.npz"))
+        sources = np.load(os.path.join(dirname, "sources.npz"))
+        firing_times = np.load(os.path.join(dirname, "firing_times.npz"))
+
         for neuron in self.neurons:
-            neuron.sources = [self.neurons[src_idx] for src_idx in np.load(os.path.join(dirname, f"sources_{neuron.idx}.npy"))]
-            neuron.delays = np.load(os.path.join(dirname, f"delays_{neuron.idx}.npy"))
-            neuron.weights = np.load(os.path.join(dirname, f"weights_{neuron.idx}.npy"))
-            neuron.firing_times = np.load(os.path.join(dirname, f"firing_times_{neuron.idx}.npy"))
+            neuron.sources = [self.neurons[src_idx] for src_idx in sources[f"sources_{neuron.idx}"]]
+            neuron.delays = delays[f"delays_{neuron.idx}"]
+            neuron.weights = weights[f"weights_{neuron.idx}"]
+            neuron.firing_times = firing_times[f"firing_times_{neuron.idx}"]
 
     def memorize(
             self, 

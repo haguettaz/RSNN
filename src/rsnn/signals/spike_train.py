@@ -49,12 +49,11 @@ class SpikeTrain:
     
     def save(self, dirname):
         os.makedirs(dirname, exist_ok=True)
-        for c in range(self.num_channels):
-            np.save(os.path.join(dirname, f"firing_times_{c}.npy"), self.firing_times[c])
+        np.savez_compressed(os.path.join(dirname, "firing_times.npz"), **{f"firing_times_{c}": self.firing_times[c] for c in range(self.num_channels)})
 
     def load(self, dirname):
-        for c in range(self.num_channels):
-            self.firing_times[c] = np.load(os.path.join(dirname, f"firing_times_{c}.npy"))
+        firing_times = np.load(os.path.join(dirname, "firing_times.npz"))
+        self.firing_times = [firing_times[f"firing_times_{c}"] for c in range(self.num_channels)]
 
     def random(self, res=1e-2, rmax=1):
         # 0. initialize
