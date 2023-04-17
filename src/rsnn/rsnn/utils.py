@@ -14,7 +14,7 @@ def get_stability_matrix(network, spike_train):
             
         res = 0.0
         if neuron is neuron_src:
-            res += neuron.refractory_resp_deriv((diff)) # should take into account the refractoriness...
+            res += neuron.refractory_resp_deriv((diff))
         
         for k in range(neuron.num_synapses):
             if neuron.sources[k] is neuron_src:
@@ -46,15 +46,8 @@ def get_stability_matrix(network, spike_train):
     Phi = np.identity(num_spikes)
     for i in tqdm(sorted_indices):
         A = np.identity(num_spikes)
-        # print("i", i)
-        # print("neuron_indices[i]", neuron_indices[i])
-        # print("firing_times[i]", firing_times[i])
 
         for j in sorted_indices:
-            # print("j", j)
-            # print("neuron_indices[j]", neuron_indices[j])
-            # print("firing_times[j]", firing_times[j])
-
             A[i, j] = get_jitter_influence(
                 network.neurons[neuron_indices[i]], 
                 firing_times[i],
@@ -63,6 +56,6 @@ def get_stability_matrix(network, spike_train):
                 )
         #print(A[get_index(neuron.idx, ft)].min(), A[get_index(neuron.idx, ft)].max())
         A[i] /= A[i].sum()
-        Phi = Phi @ A
+        Phi = A @ Phi
 
     return Phi

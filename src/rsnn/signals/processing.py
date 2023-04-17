@@ -8,9 +8,7 @@ def local_correlation(firing_times_1, firing_times_2, period, eps=1.0):
     """
     Compute the correlation between two spike trains, the first one being periodic.
     The correlation function being piecing-wise linear, a global maximum is necessarily attained 
-    at a shift such that at least one firing time of spike_train_1 is aligned with a firing time of spike_train_2.
-    local measure: correlation is computed per channel and every metrics/shifts are returned
-    global measure: correlation is computed over all channels and the global metric/shift is returned
+    at a lag such that at least one firing time of spike_train_1 is aligned with a firing time of spike_train_2.
     """
 
     kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
@@ -42,43 +40,40 @@ def local_correlation(firing_times_1, firing_times_2, period, eps=1.0):
         
     return np.array(max_corr), np.array(max_shift)
 
-def global_correlation(firing_times_1, firing_times_2, period, eps=1.0):
+def global_correlation(ref_firing_times, sim_firing_times, period, eps=1.0):
     """
     Compute the correlation between two spike trains, the first one being periodic.
     The correlation function being piecing-wise linear, a global maximum is necessarily attained 
     at a shift such that at least one firing time of spike_train_1 is aligned with a firing time of spike_train_2.
-    local measure: correlation is computed per channel and every metrics/shifts are returned
-    global measure: correlation is computed over all channels and the global metric/shift is returned
     """
 
     kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
 
-    if not isinstance(firing_times_1, list):
-        firing_times_1 = [firing_times_1]
-    if not isinstance(firing_times_2, list):
-        firing_times_2 = [firing_times_2]
+    if not isinstance(ref_firing_times, list):
+        ref_firing_times = [ref_firing_times]
+    if not isinstance(sim_firing_times, list):
+        sim_firing_times = [sim_firing_times]
         
-    assert len(firing_times_1) == len(firing_times_2)
-    num_channels = len(firing_times_1)
+    assert len(ref_firing_times) == len(sim_firing_times)
+    num_channels = len(ref_firing_times)
 
     # compute all possible correlation maximizers
-    shift = np.concatenate([(ft1[None,:] - ft2[:,None]).flatten() for ft1, ft2 in zip(firing_times_1, firing_times_2)])
+    lags = np.concatenate([(sim_ft[None,:] - ref_ft[:,None]).flatten() for ref_ft, sim_ft in zip(ref_firing_times, sim_firing_times)])
 
-    # TODO: rewrite global correlation function
-    corr = np.zeros(1 + t.size) # 1 for the case where t is empty
-    for ft1, ft2 in zip(firing_times_1, firing_times_2):
-        if ((ft1.shape[0] == 0) != (ft2.shape[0] == 0)): # exactly one spike train is empty
+    if len(lags) == 0:
+        return np.zeros(1), np.nan
+    
+    corr = np.zeros(lags.size)
+    for ref_ft, sim_ft in zip(ref_firing_times, sim_firing_times):
+        if ((ref_ft.shape[0] == 0) != (sim_ft.shape[0] == 0)): # exactly one spike train is empty
             continue
 
-        if (ft1.shape[0] == 0) and (ft2.shape[0] == 0): # both spike trains are empty
-            corr[1:] += 1
+        if (ref_ft.shape[0] == 0) and (sim_ft.shape[0] == 0): # both spike trains are empty
+            corr += 1
             continue
 
-        t = (ft1[None,:] - ft2[:,None]).flatten()
-        corr[1:] += kernel((shift[None,:] - t[:,None]) % period).sum(axis=0) / max(ft1.shape[0], ft2.shape[0])
+        tmp = (sim_ft[None,:] - ref_ft[:,None]).flatten()
+        corr += kernel(mod(lags[None,:] - tmp[:,None], period, -period/2)).sum(axis=0) / max(ref_ft.shape[0], sim_ft.shape[0])
     
     argmax = np.argmax(corr)
-    if argmax == 0:
-        return np.array(0.0), np.array(0.0)
-
-    return corr[argmax] / num_channels, mod(shift[argmax-1], period, -period/2)
+    return corr[argmax] / num_channels, mod(lags[argmax], period, -period/2)

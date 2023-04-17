@@ -51,7 +51,6 @@ class Neuron:
         assert self.delays_min <= self.delays_max
 
         self.firing_times = np.array([])
-        self.firing_patterns = [] # a list of firing patterns to memorize   
 
         self.sources = []
         self.targets = []
@@ -90,9 +89,6 @@ class Neuron:
             return self.gamma * np.sum((t > 0) * (- np.exp(- t / self.somatic_decay) / self.somatic_decay + np.exp(- t / self.synaptic_decay) / self.synaptic_decay), axis=-1)
 
     def potential(self, t):
-        if self.num_synapses == 0:
-            return np.zeros_like(t)
-
         if t.ndim == 0:
             y = np.array([self.impulse_resp(t - self.sources[k].firing_times - self.delays[k]) for k in range(self.num_synapses)])
             return self.weights @ y + self.refractory_resp((t - self.firing_times))
@@ -123,13 +119,13 @@ class Neuron:
     def memorize(
             self, 
             spike_trains: Union[List[SpikeTrain], SpikeTrain],
-            slope: float,
-            level: float,
+            min_slope: float,
+            max_level: float,
             eps: float,
             dt: float = 0.1,
             ):
 
-        assert (slope > 0) and (level > 0)
+        assert (min_slope > 0) and (max_level < self.firing_threshold)
         assert dt < eps
 
         # set time constraints
@@ -146,11 +142,11 @@ class Neuron:
             
             firing_min = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
             silent_min = np.full_like(silent_times, -np.inf)
-            active_min = np.full_like(active_times, slope)
+            active_min = np.full_like(active_times, min_slope)
             a = np.concatenate((a, firing_min.T, silent_min.T, active_min.T), axis=0)
 
             firing_max = self.firing_threshold - self.refractory_resp((spike_train.firing_times[self.idx][:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
-            silent_max = self.firing_threshold - level - self.refractory_resp((silent_times[:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
+            silent_max = max_level - self.refractory_resp((silent_times[:,None] - spike_train.firing_times[self.idx][None,:]) % spike_train.duration)
             active_max = np.full_like(active_times, np.inf)
             b = np.concatenate((b, firing_max.T, silent_max.T, active_max.T), axis=0)
 
@@ -253,14 +249,14 @@ class Network:
     def memorize(
             self, 
             spike_trains: Union[List[SpikeTrain], SpikeTrain],
-            slope: float,
-            level: float,
+            min_slope: float,
+            max_level: float,
             eps: tuple,
             res: float = 0.1,
             ):
         
         for neuron in tqdm(self.neurons):
-            neuron.memorize(spike_trains, slope, level, eps, res)
+            neuron.memorize(spike_trains, min_slope, max_level, eps, res)
 
     def run(
             self, 
