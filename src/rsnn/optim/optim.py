@@ -74,7 +74,8 @@ def solve(
     # with tqdm(total=max_iter, leave=False) as pbar:
     for _ in range(max_iter):
         if np.isnan(mw).any():
-            raise ValueError("Optimization failed with NaN values")
+            return mw, 0
+            #raise ValueError("Optimization failed with NaN values")
 
         # compute the priors
         mw_forward, Vw_forward = NUV_weights(mw)
@@ -91,9 +92,10 @@ def solve(
             # print(" Error weights:", err_weights(mw))
             # print(" Error template:", err_template(mz))
             # pbar.update(max_iter - itr)
-            return mw
-        
-    raise ValueError("Optimization failed with maximum number of iterations reached")
+            return mw, 1
+
+    return mw, 0 
+    #raise ValueError("Optimization failed with maximum number of iterations reached")
 
 def compute_weight_posterior(C, mw_forward, Vw_forward, mz_backward, Vz_backward):
     """

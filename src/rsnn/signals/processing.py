@@ -61,7 +61,7 @@ def global_correlation(ref_firing_times, sim_firing_times, period, eps=1.0):
     lags = np.concatenate([(sim_ft[None,:] - ref_ft[:,None]).flatten() for ref_ft, sim_ft in zip(ref_firing_times, sim_firing_times)])
 
     if len(lags) == 0:
-        return np.zeros(1), np.nan
+        return 0.0, np.nan
     
     corr = np.zeros(lags.size)
     for ref_ft, sim_ft in zip(ref_firing_times, sim_firing_times):

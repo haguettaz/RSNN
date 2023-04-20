@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Optional, Union
 
@@ -28,14 +29,21 @@ class SpikeTrain:
             rel_ref (float): the relative refractory period, i.e., the time constant of the refractoriness to the nominal firing rate.
             rng (np.random.Generator, optional): the random number generator. Defaults to None.
         """
-        self.rng = rng or np.random.default_rng()
 
         self.num_channels = num_channels
         self.duration = duration
 
         self.firing_rate = firing_rate
+
+        if abs_ref <= 0:
+            raise ValueError("Absolute refractory period must be positive.")
         self.abs_ref = abs_ref
+
+        if rel_ref <= 0:
+            raise ValueError("Relative refractory period must be positive.")
         self.rel_ref = rel_ref
+
+        self.rng = rng or np.random.default_rng()
 
         self.firing_times = [np.array([]) for _ in range(num_channels)]
 
@@ -50,11 +58,16 @@ class SpikeTrain:
 
         Returns:
             Union[np.ndarray, float]: the hazard function evaluated at t.
-        """        
-        if self.rel_ref > 0:
-            return (t >= self.abs_ref) * self.firing_rate * (1 - np.exp(-(t - self.abs_ref) / self.rel_ref))
+        """
+        if isinstance(t, np.ndarray):
+            h = np.zeros_like(t)
+            mask = t >= self.abs_ref
+            h[mask] = self.firing_rate * (1 - np.exp(-(t[mask] - self.abs_ref) / self.rel_ref))
+            return h
         
-        return (t >= self.abs_ref) * self.firing_rate
+        if t < self.abs_ref:
+            return 0
+        return self.firing_rate * (1 - np.exp(-(t - self.abs_ref) / self.rel_ref))
     
     def Hazard(
             self, 
@@ -68,11 +81,16 @@ class SpikeTrain:
         Returns:
             Union[np.ndarray, float]: the integrated hazard function evaluated at t.
         """   
-        if self.rel_ref > 0:
-            return (t >= self.abs_ref) * self.firing_rate * self.rel_ref * ((t - self.abs_ref) / self.rel_ref + np.exp(-(t - self.abs_ref) / self.rel_ref) - 1)
+        if isinstance(t, np.ndarray):
+            H = np.zeros_like(t)
+            mask = (t >= self.abs_ref)
+            H[mask] = self.firing_rate * (t[mask] - self.abs_ref + self.rel_ref * (np.exp(-(t[mask] - self.abs_ref)) - 1))
+            return H    
         
-        return (t >= self.abs_ref) * self.firing_rate * t
-    
+        if t < self.abs_ref:
+            return 0
+        return self.firing_rate * (t - self.abs_ref + self.rel_ref * (np.exp(-(t - self.abs_ref)) - 1))
+
     def q(
             self, 
             t: Union[np.ndarray, float]
@@ -209,14 +227,12 @@ class PeriodicSpikeTrain(SpikeTrain):
     def random(
             self,
             res:float=1e-2, 
-            rtol:float=1e-3, 
-            rmax:int=5
+            rmax:int=100
             ) -> None:
         """Generates a random periodic spike train.
 
         Args:
             res (float, optional): the time resolution. Defaults to 1e-2.
-            rtol (float, optional): the relative tolerance to compute pdfs. Defaults to 1e-3.
             rmax (int, optional): the relative maximum to compute pdfs. Defaults to 5.
         """
         # 0. initialize
@@ -229,9 +245,10 @@ class PeriodicSpikeTrain(SpikeTrain):
 
         # 1. compute the forward messages 
         qf = np.fft.rfft(qt)
-        tmp = np.copy(qf)
-        msgf = [qt]
-        while np.argmax(msgf[-1]) < idx or msgf[-1][idx] > rtol * np.max(msgf[-1]):
+        msgf = []
+        tmp = np.ones_like(qf)
+        for _ in range(math.ceil(self.duration/self.abs_ref)):
+        #while np.argmax(msgf[-1]) < idx or msgf[-1][idx] > rtol * np.max(msgf[-1]):
             tmp = tmp * qf
             msgf.append(norm(np.around(np.fft.irfft(tmp), 9)))
         msgf = np.stack(msgf, axis=0)

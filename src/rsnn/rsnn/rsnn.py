@@ -161,7 +161,7 @@ class Neuron:
         if self.weights_lvl is not None:
             raise NotImplementedError("Memorization is not implemented for discrete weights yet.")
         
-        self.weights = solve(
+        self.weights, status = solve(
             C,
             a,
             b,
@@ -169,6 +169,8 @@ class Neuron:
             self.weights_lvl,
             rng=self.rng
             )
+        
+        return status
         
 class Network:
     def __init__(
@@ -255,8 +257,11 @@ class Network:
             res: float = 0.1,
             ):
         
+        status = []
         for neuron in tqdm(self.neurons):
-            neuron.memorize(spike_trains, min_slope, max_level, eps, res)
+            status.append(neuron.memorize(spike_trains, min_slope, max_level, eps, res))
+        
+        return status
 
     def run(
             self, 
