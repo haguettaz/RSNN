@@ -258,7 +258,7 @@ class Network:
             ):
         
         status = []
-        for neuron in tqdm(self.neurons):
+        for neuron in tqdm(self.neurons, desc="Memorization"):
             status.append(neuron.memorize(spike_trains, min_slope, max_level, eps, res))
         
         return status
@@ -275,7 +275,6 @@ class Network:
         for neuron in autonomous_neurons:
             neuron.noisy_firing_threshold = neuron.firing_threshold + neuron.rng.normal(0, noise_std)
 
-        for t in tqdm(np.arange(0, duration+dt, dt)):
+        for t in tqdm(np.arange(0, duration+dt, dt), desc="Network Simulation"):
             for neuron in autonomous_neurons:
-            # for neuron in tqdm(autonomous_neurons, leave=False):
                 neuron.step(t, dt, noise_std)

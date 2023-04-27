@@ -3,6 +3,7 @@ import os
 from typing import Optional, Union
 
 import numpy as np
+from tqdm.autonotebook import trange
 
 from .utils import norm
 
@@ -191,7 +192,7 @@ class SpikeTrain:
         t = np.arange(0, 5*self.duration, res)
         qt = norm(self.q(t))
 
-        for _ in range(self.num_channels):  # for each channel
+        for _ in trange(self.num_channels, desc="Spike Train Sampling"):
             # uniformly chose the window's origin s0 in between -4*duration and 0
             s = self.rng.uniform(-4*self.duration, 0, 1)
             while s[-1] < self.duration:
@@ -223,55 +224,57 @@ class PeriodicSpikeTrain(SpikeTrain):
         """
         super().__init__(num_channels, period, firing_rate, abs_ref, rel_ref, rng)
         self.period = period
+        if self.period < self.abs_ref + self.rel_ref:
+            raise ValueError("The period must be larger than the total refractory period.")
     
     def random(
             self,
             res:float=1e-2, 
-            rmax:int=100
             ) -> None:
         """Generates a random periodic spike train.
 
         Args:
             res (float, optional): the time resolution. Defaults to 1e-2.
             rmax (int, optional): the relative maximum to compute pdfs. Defaults to 5.
-        """
+        """        
         # 0. initialize
         self.firing_times = []
 
         # implicit zero padding with rmax
-        t = (np.arange(0, self.duration, res)[None,:] + self.duration * np.arange(rmax)[:,None]).flatten()
-        qt = norm(self.q(t))
-        idx = np.ceil(self.duration/res).astype(int) # index in t corresponding to duration
+        nmax = math.floor(self.duration/self.abs_ref)
+        tmax = 10*self.duration
+        times = np.linspace(0, tmax, math.ceil(tmax/res))
+        idx = np.argmin(np.abs(times - self.duration)) # index in t corresponding to duration
 
         # 1. compute the forward messages 
-        qf = np.fft.rfft(qt)
+        p = norm(np.around(self.q(times), 12))
+        P = np.fft.rfft(p)
         msgf = []
-        tmp = np.ones_like(qf)
-        for _ in range(math.ceil(self.duration/self.abs_ref)):
-        #while np.argmax(msgf[-1]) < idx or msgf[-1][idx] > rtol * np.max(msgf[-1]):
-            tmp = tmp * qf
-            msgf.append(norm(np.around(np.fft.irfft(tmp), 9)))
+        tmp = np.ones_like(P)
+        for n in range(nmax):
+            tmp = tmp * P
+            msgf.append(norm(np.clip(np.around(np.fft.irfft(tmp), 12), 0, None)))
         msgf = np.stack(msgf, axis=0)
 
         # 2. compute the distribution of the number of firings
         pn = norm(msgf[:, idx])
-        
+
         # 3. sample per channels
-        for _ in range(self.num_channels):
+        for _ in trange(self.num_channels, desc="Periodic Spike Train Sampling"):
             # 3.a. is there any spike?
             if self.rng.binomial(1, self.Q(self.duration)) == 0:
                 self.firing_times.append(np.array([]))
                 continue
                 
             # 3.b. given there is at least one spike, sample the exact number of spikes in the sequence
-            n = self.rng.choice(len(pn), p=pn) + 1
+            n = self.rng.choice(nmax, p=pn) + 1
             
             # 3.c. given the exact number of spikes, sample sn, ..., s1 by backward sampling, starting from sn = self.duration
             s = np.empty(n)
             s[-1] = self.duration
             for m in range(n-2, -1, -1):
-                psm = norm(msgf[m] * self.q(s[m+1] - t))
-                s[m] = self.rng.choice(t, p=psm)
+                psm = norm(msgf[m] * self.q(s[m+1] - times))
+                s[m] = self.rng.choice(times, p=psm)
                 
             # 3.d independently, sample the origin of the sequence s0, and cyclically shift the sequence
             s0 = self.rng.uniform(0, self.duration)
