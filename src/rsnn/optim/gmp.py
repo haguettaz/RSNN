@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def fgmp_obs_blck(A, mx_forward, Vx_forward, my_backward, Vy_backward):
+def observation_block_forward(A, mx_forward, Vx_forward, my_backward, Vy_backward):
     """
     Forward Gaussian message passing through an observation block (Table V in Loeliger2016) with one scalar observation.
 

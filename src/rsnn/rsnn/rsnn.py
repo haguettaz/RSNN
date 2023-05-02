@@ -4,7 +4,8 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 from tqdm.autonotebook import tqdm
 
-from ..optim.optim import solve
+from ..optim.optim import (compute_bounded_discrete_weights,
+                           compute_bounded_weights)
 from ..signals.spike_train import SpikeTrain
 from ..signals.utils import sphere_intersection, sphere_intersection_complement
 
@@ -158,18 +159,24 @@ class Neuron:
         assert C.shape[0] == a.shape[0] == b.shape[0]
         assert C.shape[0] > 0        
 
-        if self.weights_lvl is not None:
-            raise NotImplementedError("Memorization is not implemented for discrete weights yet.")
-        
-        self.weights, status = solve(
-            C,
-            a,
-            b,
-            (np.full(self.num_synapses, self.weights_min), np.full(self.num_synapses, self.weights_max)),
-            self.weights_lvl,
-            rng=self.rng
+        if self.weights_lvl is None:
+            self.weights, status = compute_bounded_weights(
+                C,
+                a,
+                b,
+                (self.weights_min, self.weights_max),
+                rng=self.rng
+                )
+        else:
+            self.weights, status = compute_bounded_discrete_weights(
+                C,
+                a,
+                b,
+                (self.weights_min, self.weights_max),
+                self.weights_lvl,
+                rng=self.rng
             )
-        
+            
         return status
         
 class Network:
