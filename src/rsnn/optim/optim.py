@@ -5,7 +5,7 @@ from tqdm.autonotebook import trange
 
 from .gmp import observation_block_forward
 from .nuv import box_prior, m_ary_prior
-from .utils import box_error
+from .utils import bin_error, box_error
 
 
 def compute_bounded_weights(
@@ -70,9 +70,6 @@ def compute_bounded_discrete_weights(
     wmin = np.full((K, wlvl-1), wlim[0])
     wmax = np.full((K, wlvl-1), wlim[1])
 
-    print("wminm", wlim[0]/(wlvl-1))
-    print("wmaxm", wlim[1]/(wlvl-1))
-
     # weights are parametrized as a mixture of wlvl-1 binary components, i.e., wk = wk,1 + wk,2 + ... + wk,wlvl-1
     mwm = rng.uniform(wmin/(wlvl-1), wmax/(wlvl-1))
     Vwm = (wmax-wmin)/(wlvl-1)**2
@@ -86,7 +83,7 @@ def compute_bounded_discrete_weights(
         # compute nuv priors based on posterior means and variances
         mfwm, Vfwm = m_ary_prior(mwm, Vwm, wmin, wmax, wlvl)
         mfw, Vfw = np.sum(mfwm, axis=-1), np.sum(Vfwm, axis=-1)
-        mbz, Vbz = box_prior(mz, a, b, 10)
+        mbz, Vbz = box_prior(mz, a, b, 1e-2)
 
         # compute weights posterior means and variances by forward message passing
         mw = np.copy(mfw)
@@ -106,13 +103,22 @@ def compute_bounded_discrete_weights(
         # weight with prior variance zero are not updated
         mwm = mfwm - Vfwm*xitw[:,None]
         Vwm = Vfwm - Vfwm*Wtw[:,None]*Vfwm
-        print("means", mwm[0], "should be in {", wlim[0]/(wlvl-1), ",", wlim[1]/(wlvl-1), "}")
-        print("vars", Vwm[0])
+        # print("means", mwm[0], "should be in {", wlim[0]/(wlvl-1), ",", wlim[1]/(wlvl-1), "}")
+        # print("vars", Vwm[0])
 
         mw, Vw = np.sum(mwm, axis=-1), np.sum(Vwm, axis=-1)
         mz = C @ mw
 
-        if Vw.max() < var_tol and box_error(mz, a, b) < err_tol:
-            return mw, "solved"
+        print("weights", mwm[0], flush=True)
+        print("box error", box_error(mz, a, b), flush=True)
+        print("bin error", bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)), flush=True)
+
+        if box_error(mz, a, b) < err_tol:
+            if bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)) < err_tol:
+                print("solved", flush=True)
+                return mw, "solved"
+        elif Vwm.max() < var_tol:
+            print("premature binarization", flush=True)
+            return mw, "premature_binarization"
 
     return mw, "max_iter"

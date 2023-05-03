@@ -23,3 +23,6 @@ def box_error(x: np.ndarray, xmin: np.ndarray, xmax: np.ndarray) -> float:
         err = np.maximum(err, np.max(np.abs(x[mask] - xmin[mask]) + np.abs(x[mask] - xmax[mask]) - (xmax[mask] - xmin[mask])))
 
     return err
+
+def bin_error(x: np.ndarray, xmin: np.ndarray, xmax: np.ndarray) -> float:
+    return np.max(np.minimum(x-xmin, xmax-x))
