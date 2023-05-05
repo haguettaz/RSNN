@@ -15,9 +15,9 @@ class SpikeTrain:
             self, 
             num_channels:int, 
             duration:float, 
-            firing_rate:float, 
-            abs_ref:float, 
-            rel_ref:float, 
+            nominal_rate:float, 
+            abs_recovery_time:float, 
+            rel_recovery_time:float, 
             rng:np.random.Generator=None
             ) -> None:
         """Initialize a spike train.
@@ -25,24 +25,18 @@ class SpikeTrain:
         Args:
             num_channels (int): the number of channels / neurons.
             duration (float): the duration of the spike train.
-            firing_rate (float): the firing rate of the spike train.
-            abs_ref (float): the absolute refractory period.
-            rel_ref (float): the relative refractory period, i.e., the time constant of the refractoriness to the nominal firing rate.
+            nominal_rate (float): the nominal rate of the hazard function.
+            recovery_time (float): the time it takes the hazard function to reach 1/e of the nominal rate.
             rng (np.random.Generator, optional): the random number generator. Defaults to None.
         """
 
         self.num_channels = num_channels
         self.duration = duration
 
-        self.firing_rate = firing_rate
+        self.nominal_rate = nominal_rate
 
-        if abs_ref <= 0:
-            raise ValueError("Absolute refractory period must be positive.")
-        self.abs_ref = abs_ref
-
-        if rel_ref <= 0:
-            raise ValueError("Relative refractory period must be positive.")
-        self.rel_ref = rel_ref
+        self.abs_recovery_time = abs_recovery_time
+        self.rel_recovery_time = rel_recovery_time
 
         self.rng = rng or np.random.default_rng()
 
@@ -62,13 +56,13 @@ class SpikeTrain:
         """
         if isinstance(t, np.ndarray):
             h = np.zeros_like(t)
-            mask = t >= self.abs_ref
-            h[mask] = self.firing_rate * (1 - np.exp(-(t[mask] - self.abs_ref) / self.rel_ref))
+            mask = (t >= self.abs_recovery_time)
+            h[mask] = self.nominal_rate * (1 - np.exp(-(t[mask] - self.abs_recovery_time)/ self.rel_recovery_time))
             return h
         
-        if t < self.abs_ref:
+        if t < self.abs_recovery_time:
             return 0
-        return self.firing_rate * (1 - np.exp(-(t - self.abs_ref) / self.rel_ref))
+        return self.nominal_rate * (1 - np.exp(-(t - self.abs_recovery_time) / self.rel_recovery_time))
     
     def Hazard(
             self, 
@@ -84,13 +78,13 @@ class SpikeTrain:
         """   
         if isinstance(t, np.ndarray):
             H = np.zeros_like(t)
-            mask = (t >= self.abs_ref)
-            H[mask] = self.firing_rate * (t[mask] - self.abs_ref + self.rel_ref * (np.exp(-(t[mask] - self.abs_ref)) - 1))
+            mask = (t >= self.abs_recovery_time)
+            H[mask] = self.nominal_rate * (t[mask] - self.abs_recovery_time + self.rel_recovery_time * (np.exp(-(t[mask] - self.abs_recovery_time) / self.rel_recovery_time) - 1))
             return H    
         
-        if t < self.abs_ref:
+        if t < self.abs_recovery_time:
             return 0
-        return self.firing_rate * (t - self.abs_ref + self.rel_ref * (np.exp(-(t - self.abs_ref)) - 1))
+        return self.nominal_rate * (t - self.abs_recovery_time + self.rel_recovery_time * (np.exp(-(t - self.abs_recovery_time) / self.rel_recovery_time) - 1))
 
     def q(
             self, 
@@ -192,7 +186,7 @@ class SpikeTrain:
         t = np.arange(0, 5*self.duration, res)
         qt = norm(self.q(t))
 
-        for _ in trange(self.num_channels, desc="Spike Train Sampling"):
+        for _ in trange(self.num_channels, desc="sampling"):
             # uniformly chose the window's origin s0 in between -4*duration and 0
             s = self.rng.uniform(-4*self.duration, 0, 1)
             while s[-1] < self.duration:
@@ -207,29 +201,28 @@ class PeriodicSpikeTrain(SpikeTrain):
             self, 
             num_channels:int, 
             period:float, 
-            firing_rate:float, 
-            abs_ref:float, 
-            rel_ref:float, 
-            rng:np.random.Generator=None
+            nominal_rate:float, 
+            abs_recovery_time:float, 
+            rel_recovery_time:float,             rng:np.random.Generator=None
             ) -> None:
         """Initialize a periodic spike train.
 
         Args:
             num_channels (int): the number of channels / neurons.
             period (float): the period of the spike train.
-            firing_rate (float): the firing rate of the spike train.
-            abs_ref (float): the absolute refractory period.
-            rel_ref (float): the relative refractory period, i.e., the time constant of the refractoriness to the nominal firing rate.
+            nominal_rate (float): the nominal rate of the hazard function.
+            recovery_time (float): the time it takes the hazard function to reach 1/e of the nominal rate.
             rng (np.random.Generator, optional): the random number generator. Defaults to None.
         """
-        super().__init__(num_channels, period, firing_rate, abs_ref, rel_ref, rng)
+        super().__init__(num_channels, period, nominal_rate, abs_recovery_time, rel_recovery_time, rng)
         self.period = period
-        if self.period < self.abs_ref + self.rel_ref:
-            raise ValueError("The period must be larger than the total refractory period.")
+        # if self.period < self.rel_recovery_time + self.rel_ref:
+        #     raise ValueError("The period must be larger than the total refractory period.")
     
     def random(
             self,
             res:float=1e-2, 
+            rtol:float=1e-12
             ) -> None:
         """Generates a random periodic spike train.
 
@@ -241,33 +234,46 @@ class PeriodicSpikeTrain(SpikeTrain):
         self.firing_times = []
 
         # implicit zero padding with rmax
-        nmax = math.floor(self.duration/self.abs_ref)
-        tmax = 10*self.duration
-        times = np.linspace(0, tmax, math.ceil(tmax/res))
-        idx = np.argmin(np.abs(times - self.duration)) # index in t corresponding to duration
+        tmax = self.rel_recovery_time + self.abs_recovery_time
+        q_ref = self.q(tmax)
+        while (self.q(tmax) > rtol*q_ref):
+            tmax += self.rel_recovery_time + self.abs_recovery_time
+
+        times = np.arange(0, tmax, res)
+        idx = np.argmin(np.abs(times - self.period)) # index in t corresponding to duration
+        # print(self.period, times[idx], times.shape)
 
         # 1. compute the forward messages 
-        p = norm(np.around(self.q(times), 12))
-        P = np.fft.rfft(p)
-        msgf = []
-        tmp = np.ones_like(P)
-        for n in range(nmax):
-            tmp = tmp * P
-            msgf.append(norm(np.clip(np.around(np.fft.irfft(tmp), 12), 0, None)))
-        msgf = np.stack(msgf, axis=0)
+        p1 = norm(self.q(times)) # p1 should never change
+        p1ft = np.fft.rfft(p1)
+        pn = np.copy(p1)
+        pnft = np.copy(p1ft)
+        msgf = [p1]
+        old_sum = p1[:idx+1].sum()
+        # iterate while there is a bug in the fft, i.e., 
+        while True:
+            pnft = pnft * p1ft
+            pn = np.fft.irfft(pnft)
+            new_sum = pn[:idx+1].sum()
+            if new_sum > old_sum:
+                break
+            old_sum = new_sum
+            msgf.append(pn)
+        msgf = np.vstack(msgf)
 
         # 2. compute the distribution of the number of firings
         pn = norm(msgf[:, idx])
+        nmax = pn.shape[0]
 
         # 3. sample per channels
-        for _ in trange(self.num_channels, desc="Periodic Spike Train Sampling"):
+        for _ in trange(self.num_channels, desc="sampling"):
             # 3.a. is there any spike?
-            if self.rng.binomial(1, self.Q(self.duration)) == 0:
+            if self.rng.binomial(1, 1 - self.Q(self.duration)):
                 self.firing_times.append(np.array([]))
                 continue
                 
             # 3.b. given there is at least one spike, sample the exact number of spikes in the sequence
-            n = self.rng.choice(nmax, p=pn) + 1
+            n = self.rng.choice(np.arange(1, nmax + 1), p=pn)
             
             # 3.c. given the exact number of spikes, sample sn, ..., s1 by backward sampling, starting from sn = self.duration
             s = np.empty(n)

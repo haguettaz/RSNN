@@ -14,7 +14,7 @@ def compute_bounded_weights(
         b: np.ndarray,
         wlim: Tuple[float, float],
         max_iter: int = 1000, 
-        err_tol: float = 1e-3,
+        err_tol: float = 1e-4,
         rng: np.random.Generator = None
         ):    
 
@@ -28,7 +28,7 @@ def compute_bounded_weights(
     mw = rng.uniform(wmin, wmax)
     mz = C @ mw
 
-    for _ in trange(max_iter, desc="Optimization"):
+    for _ in trange(max_iter, desc="neuron optimization"):
         if np.isnan(mw).any():
             return mw, "nan"
 
@@ -44,6 +44,9 @@ def compute_bounded_weights(
 
         # compute potential posterior means
         mz = C @ mw
+
+        # print("weight error", box_error(mw, wmin, wmax))
+        # print("potential error", box_error(mz, a, b))
 
         # stopping criterion
         if box_error(mw, wmin, wmax) < err_tol and box_error(mz, a, b) < err_tol:
@@ -76,7 +79,7 @@ def compute_bounded_discrete_weights(
     mw, Vw = np.sum(mwm, axis=-1), np.sum(Vwm, axis=-1)
     mz = C @ mw
 
-    for _ in trange(max_iter, desc="Optimization"):
+    for _ in trange(max_iter, desc="neuron optimization"):
         if np.isnan(mw).any():
             return mw, "nan"
 
