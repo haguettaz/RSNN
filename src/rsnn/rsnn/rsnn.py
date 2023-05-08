@@ -19,7 +19,7 @@ class Neuron:
             synaptic_decay: Union[float, List[float]], # synaptic time constant c_k, e.g., 5 ms
             somatic_decay: float, # somatic time constant c_0, e.g., 10 ms
             delays_lim: Tuple[float, float],
-            refractory_time: float, # time it takes for the neuron recovery response to reach e^-1 * theta after a spike
+            # refractory_time: float, # time it takes for the neuron recovery response to reach e^-1 * theta after a spike
             refractory_weight: float, # weight of the refractoriness feedback loop
             weights_lim: Tuple[float, float],
             weights_lvl: Optional[int] = None,
@@ -30,7 +30,7 @@ class Neuron:
 
         self.num_synapses = num_synapses
         self.firing_threshold = firing_threshold
-        self.refractory_time = refractory_time
+        # self.refractory_time = refractory_time
         self.refractory_weight = refractory_weight
 
         self.weights_min, self.weights_max = weights_lim
@@ -57,13 +57,13 @@ class Neuron:
     def refractory_resp(self, t):
         # () just one time point with one firing time, (n,) one time point with n firing times, (n, m) n time points with m firing times
         if (t.ndim < 2):
-            return -self.refractory_weight * np.sum((t > 0) * np.exp(- t / self.refractory_time))
-        return -self.refractory_weight * np.sum((t > 0) * np.exp(- t / self.refractory_time), axis=-1)
+            return -self.refractory_weight * np.sum((t > 0) * np.exp(- t / self.somatic_decay))
+        return -self.refractory_weight * np.sum((t > 0) * np.exp(- t / self.somatic_decay), axis=-1)
 
     def refractory_resp_deriv(self, t):
         if (t.ndim < 2):
-            return self.refractory_weight / self.refractory_time * np.sum((t > 0) * np.exp(- t / self.refractory_time))
-        return self.refractory_weight / self.refractory_time * np.sum((t > 0) * np.exp(- t / self.refractory_time), axis=-1)
+            return self.refractory_weight / self.somatic_decay * np.sum((t > 0) * np.exp(- t / self.somatic_decay))
+        return self.refractory_weight / self.somatic_decay * np.sum((t > 0) * np.exp(- t / self.somatic_decay), axis=-1)
     
     def impulse_resp(self, t):
         if self.somatic_decay == self.synaptic_decay:
@@ -148,7 +148,7 @@ class Neuron:
         assert C.shape[0] > 0        
 
         if self.weights_lvl is None:
-            self.weights, status = compute_bounded_weights(
+            self.weights, summary = compute_bounded_weights(
                 C,
                 a,
                 b,
@@ -156,7 +156,7 @@ class Neuron:
                 rng=self.rng
                 )
         else:
-            self.weights, status = compute_bounded_discrete_weights(
+            self.weights, summary = compute_bounded_discrete_weights(
                 C,
                 a,
                 b,
@@ -165,7 +165,7 @@ class Neuron:
                 rng=self.rng
             )
             
-        return status
+        return summary
         
 class Network:
     def __init__(
@@ -176,7 +176,7 @@ class Network:
             synaptic_decay: Union[float, List[float]], # inverse synaptic time constant c_k, e.g., 1/5 ms
             somatic_decay: float, # inverse somatic time constant c_0, e.g., 1/10 ms
             delays_lim: Tuple[float, float],
-            refractory_time:float,
+            # refractory_time:float,
             refractory_weight: float, # weight of the refractoriness feedback loop
             weights_lim: Tuple[float, float],
             weights_lvl: Optional[int] = None,
@@ -191,7 +191,7 @@ class Network:
         self.synaptic_decay = synaptic_decay
         self.somatic_decay = somatic_decay
         self.delays_lim = delays_lim
-        self.refractory_time = refractory_time
+        # self.refractory_time = refractory_time
         self.refractory_weight = refractory_weight
         self.weights_lim = weights_lim
         self.weights_lvl = weights_lvl
@@ -204,7 +204,7 @@ class Network:
                 synaptic_decay,
                 somatic_decay,
                 delays_lim,
-                refractory_time,
+                # somatic_decay,
                 refractory_weight,
                 weights_lim,
                 weights_lvl,
@@ -249,11 +249,10 @@ class Network:
             res: float = 0.1,
             ):
         
-        status = []
+        summmaries = []
         for neuron in tqdm(self.neurons, desc="network optimization"):
-            status.append(neuron.memorize(spike_trains, min_slope, max_level, eps, res))
-        
-        return status
+            summmaries.append(neuron.memorize(spike_trains, min_slope, max_level, eps, res))
+        return summmaries
 
     def run(
             self, 

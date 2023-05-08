@@ -44,7 +44,7 @@ def get_stability_matrix(network, spike_train):
     #     dict_firing_times[ft] = [neuron for neuron in network.neurons if ft in spike_train.firing_times[neuron.idx]]
 
     Phi = np.identity(num_spikes)
-    for i in tqdm(sorted_indices):
+    for i in tqdm(sorted_indices, desc="stability matrix"):
         A = np.identity(num_spikes)
 
         for j in sorted_indices:

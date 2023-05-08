@@ -86,7 +86,7 @@ class SpikeTrain:
             return 0
         return self.nominal_rate * (t - self.abs_recovery_time + self.rel_recovery_time * (np.exp(-(t - self.abs_recovery_time) / self.rel_recovery_time) - 1))
 
-    def q(
+    def f(
             self, 
             t: Union[np.ndarray, float]
             ) -> Union[np.ndarray, float]:
@@ -100,7 +100,7 @@ class SpikeTrain:
         """   
         return self.hazard(t) * np.exp(-self.Hazard(t))
     
-    def Q(
+    def F(
             self, 
             t: Union[np.ndarray, float]
             ) -> Union[np.ndarray, float]:
@@ -184,7 +184,7 @@ class SpikeTrain:
 
         # assume a spike occurs at time t0
         t = np.arange(0, 5*self.duration, res)
-        qt = norm(self.q(t))
+        qt = norm(self.f(t))
 
         for _ in trange(self.num_channels, desc="sampling"):
             # uniformly chose the window's origin s0 in between -4*duration and 0
@@ -222,7 +222,8 @@ class PeriodicSpikeTrain(SpikeTrain):
     def random(
             self,
             res:float=1e-2, 
-            rtol:float=1e-12
+            rmax:float=10,
+            atol:float=1e-6
             ) -> None:
         """Generates a random periodic spike train.
 
@@ -234,30 +235,28 @@ class PeriodicSpikeTrain(SpikeTrain):
         self.firing_times = []
 
         # implicit zero padding with rmax
-        tmax = self.rel_recovery_time + self.abs_recovery_time
-        q_ref = self.q(tmax)
-        while (self.q(tmax) > rtol*q_ref):
-            tmax += self.rel_recovery_time + self.abs_recovery_time
-
-        times = np.arange(0, tmax, res)
-        idx = np.argmin(np.abs(times - self.period)) # index in t corresponding to duration
+        # tmax = self.rel_recovery_time + self.abs_recovery_time
+        # q_ref = self.f(tmax)
+        # while (self.f(tmax) > rtol*q_ref):
+        #     tmax += self.rel_recovery_time + self.abs_recovery_time
+        # tmax = max(tmax, 2*self.period)
+        # times = np.arange(0, tmax, res)
+        # idx = np.argmin(np.abs(times - self.period)) # index in t corresponding to duration
         # print(self.period, times[idx], times.shape)
 
+        times = np.arange(0, rmax*self.duration, res)
+        idx = np.argmin(np.abs(times - self.period)) # index in times corresponding to duration
+
         # 1. compute the forward messages 
-        p1 = norm(self.q(times)) # p1 should never change
+        p1 = norm(self.f(times)) # p1 should never change
         p1ft = np.fft.rfft(p1)
         pn = np.copy(p1)
         pnft = np.copy(p1ft)
         msgf = [p1]
-        old_sum = p1[:idx+1].sum()
-        # iterate while there is a bug in the fft, i.e., 
-        while True:
+        # iterate over n while P(Sn <= t) > atol
+        while pn[:idx].sum() > atol:
             pnft = pnft * p1ft
-            pn = np.fft.irfft(pnft)
-            new_sum = pn[:idx+1].sum()
-            if new_sum > old_sum:
-                break
-            old_sum = new_sum
+            pn = np.around(np.fft.irfft(pnft), decimals=12)
             msgf.append(pn)
         msgf = np.vstack(msgf)
 
@@ -268,7 +267,7 @@ class PeriodicSpikeTrain(SpikeTrain):
         # 3. sample per channels
         for _ in trange(self.num_channels, desc="sampling"):
             # 3.a. is there any spike?
-            if self.rng.binomial(1, 1 - self.Q(self.duration)):
+            if self.rng.binomial(1, 1 - self.F(self.duration)):
                 self.firing_times.append(np.array([]))
                 continue
                 
@@ -279,7 +278,7 @@ class PeriodicSpikeTrain(SpikeTrain):
             s = np.empty(n)
             s[-1] = self.duration
             for m in range(n-2, -1, -1):
-                psm = norm(msgf[m] * self.q(s[m+1] - times))
+                psm = norm(msgf[m] * self.f(s[m+1] - times))
                 s[m] = self.rng.choice(times, p=psm)
                 
             # 3.d independently, sample the origin of the sequence s0, and cyclically shift the sequence

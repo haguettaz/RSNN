@@ -14,7 +14,7 @@ def compute_bounded_weights(
         b: np.ndarray,
         wlim: Tuple[float, float],
         max_iter: int = 1000, 
-        err_tol: float = 1e-4,
+        err_tol: float = 1e-3,
         rng: np.random.Generator = None
         ):    
 
@@ -28,9 +28,9 @@ def compute_bounded_weights(
     mw = rng.uniform(wmin, wmax)
     mz = C @ mw
 
-    for _ in trange(max_iter, desc="neuron optimization"):
+    for i in trange(max_iter, desc="neuron optimization"):
         if np.isnan(mw).any():
-            return mw, "nan"
+            raise ValueError("nan in weights!")
 
         # compute nuv priors based on posterior means only (no variances)
         mfw, Vfw = box_prior(mw, wmin, wmax, 1)
@@ -45,14 +45,13 @@ def compute_bounded_weights(
         # compute potential posterior means
         mz = C @ mw
 
-        # print("weight error", box_error(mw, wmin, wmax))
-        # print("potential error", box_error(mz, a, b))
-
         # stopping criterion
         if box_error(mw, wmin, wmax) < err_tol and box_error(mz, a, b) < err_tol:
-            return mw, "solved"
+            summary = {"status": "solved", "num_iter": i, "weight_error": box_error(mw, wmin, wmax), "potential_error": box_error(mz, a, b)}
+            return mw, summary
 
-    return mw, "max_iter"
+    summary = {"status": "not solved", "num_iter": i, "weight_error": box_error(mw, wmin, wmax), "potential_error": box_error(mz, a, b)}
+    return mw, summary
 
 def compute_bounded_discrete_weights(
         C: np.ndarray,
@@ -79,7 +78,7 @@ def compute_bounded_discrete_weights(
     mw, Vw = np.sum(mwm, axis=-1), np.sum(Vwm, axis=-1)
     mz = C @ mw
 
-    for _ in trange(max_iter, desc="neuron optimization"):
+    for i in trange(max_iter, desc="neuron optimization"):
         if np.isnan(mw).any():
             return mw, "nan"
 
@@ -118,10 +117,11 @@ def compute_bounded_discrete_weights(
 
         if box_error(mz, a, b) < err_tol:
             if bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)) < err_tol:
-                print("solved", flush=True)
-                return mw, "solved"
-        elif Vwm.max() < var_tol:
-            print("premature binarization", flush=True)
-            return mw, "premature_binarization"
+                summary = {"status": "solved", "num_iter": i, "weight_error": bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)), "potential_error": box_error(mz, a, b)}
+                return mw, summary
+        elif Vwm.max() < var_tol: # premature binarization
+            summary = {"status": "not solved", "num_iter": i, "weight_error": bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)), "potential_error": box_error(mz, a, b)}
+            return mw, summary
 
-    return mw, "max_iter"
+    summary = {"status": "not solved", "num_iter": i, "weight_error": bin_error(mwm, wmin/(wlvl-1), wmax/(wlvl-1)), "potential_error": box_error(mz, a, b)}
+    return mw, summary
