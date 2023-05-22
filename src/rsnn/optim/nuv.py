@@ -1,26 +1,26 @@
 import numpy as np
 
 
-def box_prior(mx, xmin=None, xmax=None, gamma=1):
+def box_prior(mx:np.ndarray, x_min=np.ndarray, x_max=np.ndarray, gamma=1):
     """
-    Returns prior messages corresponding to box constraints between xmin and xmax (inclusive).
+    NUV composite box prior to enforce x_min <= mx <= x_max elementwise.
 
     Args:
-        mx (np.FloatTensor): posterior means.
-        xmin (float, optional): smallest admissible value. Defaults to None.
-        xmax (float, optional): largest admissible value. Defaults to None.
-        gamma (float, optional): constraint' hardness parameter, the smaller the softer. Defaults to 1.
+        mx (np.ndarray): posterior means.
+        x_min (np.ndarray): smallest admissible values.
+        x_max (np.ndarray): largest admissible values.
+        gamma (float): constraint' hardness parameter, the smaller the softer. Defaults to 1.
 
     Returns:
-        mfx (np.FloatTensor): prior means.
-        Vfx (np.FloatTensor): prior variances.
+        mfx (np.ndarray): box prior means.
+        Vfx (np.ndarray): box prior variances.
     """
 
-    if np.any(xmin > xmax):
-        raise ValueError(f"xmin cannot be larger than xmax")
+    if np.any(x_min > x_max):
+        raise ValueError(f"x_min cannot be larger than x_max")
     
-    mask_finite_xmin = np.isfinite(xmin)
-    mask_finite_xmax = np.isfinite(xmax)
+    mask_finite_xmin = np.isfinite(x_min)
+    mask_finite_xmax = np.isfinite(x_max)
 
     mfx = np.empty_like(mx)
     Vfx = np.empty_like(mx)
@@ -32,79 +32,79 @@ def box_prior(mx, xmin=None, xmax=None, gamma=1):
 
     # left half-space
     mask = (~mask_finite_xmin) & mask_finite_xmax
-    sigma2x_max = np.abs(mx[mask] - xmax[mask])
-    mfx[mask] = xmax[mask] - sigma2x_max
+    sigma2x_max = np.abs(mx[mask] - x_max[mask])
+    mfx[mask] = x_max[mask] - sigma2x_max
     Vfx[mask] = sigma2x_max / gamma
 
     # right half-space
     mask = mask_finite_xmin & (~mask_finite_xmax)
-    sigma2x_min = np.abs(mx[mask] - xmin[mask])
-    mfx[mask] = xmin[mask] + sigma2x_min
+    sigma2x_min = np.abs(mx[mask] - x_min[mask])
+    mfx[mask] = x_min[mask] + sigma2x_min
     Vfx[mask] = sigma2x_min / gamma
 
     # laplace
-    mask = mask_finite_xmin & mask_finite_xmax & (xmin == xmax)
-    sigma2 = np.abs(mx[mask] - xmin[mask])
-    mfx[mask] = xmin[mask]
+    mask = mask_finite_xmin & mask_finite_xmax & (x_min == x_max)
+    sigma2 = np.abs(mx[mask] - x_min[mask])
+    mfx[mask] = x_min[mask]
     Vfx[mask] = (sigma2) / gamma
 
     # box
-    mask = mask_finite_xmin & mask_finite_xmax & (xmin < xmax)
-    sigma2x_min = np.abs(mx[mask] - xmin[mask])
-    sigma2x_max = np.abs(mx[mask] - xmax[mask])
-    mfx[mask] = (xmin[mask] * sigma2x_max + xmax[mask] * sigma2x_min) / (sigma2x_min + sigma2x_max)
+    mask = mask_finite_xmin & mask_finite_xmax & (x_min < x_max)
+    sigma2x_min = np.abs(mx[mask] - x_min[mask])
+    sigma2x_max = np.abs(mx[mask] - x_max[mask])
+    mfx[mask] = (x_min[mask] * sigma2x_max + x_max[mask] * sigma2x_min) / (sigma2x_min + sigma2x_max)
     Vfx[mask] = (sigma2x_min * sigma2x_max) / (sigma2x_min + sigma2x_max) / gamma
 
     return mfx, Vfx
 
 
-def binary_prior(mx, Vx, xmin, xmax):
+def binary_prior(mx, Vx, x_min, x_max):
     """
-    Returns prior messages corresponding to binary constraints between wmin and wmax.
+    NUV composite binarizing prior to enforce 2-discrete mx in between x_min and x_max.
 
     Args:
-        mx (np.FloatTensor): posterior means with size (..., C).
-        Vx (np.FloatTensor): posterior variances with size (..., C). Defaults to None.
-        xmin (float): smallest admissible value. 
-        xmax (float): largest admissible value. 
+        mx (np.ndarray): posterior means.
+        Vx (np.ndarray): posterior variances.
+        x_min (float): smallest admissible values. 
+        x_max (float): largest admissible values. 
 
     Returns:
-        mfx (np.FloatTensor): prior means with shape (..., C).
-        Vfx (np.FloatTensor): prior variances with shape (..., C).
+        mfx (np.ndarray): binarizing prior means.
+        Vfx (np.ndarray): binarizing prior variances.
     """
-    if np.any(xmin > xmax):
-        raise ValueError(f"xmin cannot be larger than xmax")
+    if np.any(x_min > x_max):
+        raise ValueError(f"x_min cannot be larger than x_max")
 
-    Vx_min = Vx + (mx - xmin)**2
-    Vx_max = Vx + (mx - xmax)**2
+    Vx_min = Vx + (mx - x_min)**2
+    Vx_max = Vx + (mx - x_max)**2
 
-    mfx = (xmin * Vx_max + xmax * Vx_min) / (Vx_min + Vx_max)
+    mfx = (x_min * Vx_max + x_max * Vx_min) / (Vx_min + Vx_max)
     Vfx = (Vx_min * Vx_max) / (Vx_min + Vx_max)
 
     return mfx, Vfx
 
 
-def m_ary_prior(mxm, Vxm, xmin, xmax, xlvl):
-    """
-    Returns prior messages corresponding to M-level constraints between xmin and xmax (inclusive).
+# def m_ary_prior(mxm, Vxm, x_min, x_max, xlvl):
+#     """
+#     NUV composite binarizing prior to enforce xlvl-discrete mx in between x_min and x_max.
 
-    Args:
-        mx (np.FloatTensor): posterior means with size (..., M-1, L).
-        Vx (np.FloatTensor): posterior variances with size (..., M-1, L).
-        xmin (float): smallest admissible value.
-        xmax (float): largest admissible value.
-        M (int): number of levels.
+#     Args:
+#         mxm (np.ndarray): posterior means for x_m, where x = x_1 + x_2 + ..., componentwise.
+#         Vxm (np.ndarray): posterior variances for x_m, where x = x_1 + x_2 + ..., componentwise.
+#         x_min (float): smallest admissible values. 
+#         x_max (float): largest admissible values. 
+#         xlvl (int): number of discretization levels.
 
-    Returns:
-        mfx (np.FloatTensor): prior means with shape (..., L).
-        Vfx (np.FloatTensor): prior variances with shape (..., L).
-    """
-    if np.any(xmin > xmax):
-        raise ValueError(f"xmin cannot be larger than xmax")
+#     Returns:
+#         mfx (np.ndarray): discrete prior means.
+#         Vfx (np.ndarray): discrete prior variances.
+#     """
+#     if np.any(x_min > x_max):
+#         raise ValueError(f"x_min cannot be larger than x_max")
 
-    if xlvl - 1 != mxm.shape[-1] != Vxm.shape[-1]:
-        raise ValueError(f"xlvl, mxm, and Vxm must match")
+#     if xlvl - 1 != mxm.shape[-1] != Vxm.shape[-1]:
+#         raise ValueError(f"xlvl, mxm, and Vxm must match")
 
-    mfxm, Vfxm = binary_prior(mxm, Vxm, xmin/(xlvl-1), xmax/(xlvl-1))
+#     mfxm, Vfxm = binary_prior(mxm, Vxm, x_min/(xlvl-1), x_max/(xlvl-1))
 
-    return mfxm, Vfxm
+#     return mfxm, Vfxm

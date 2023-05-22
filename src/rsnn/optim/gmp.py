@@ -1,28 +1,27 @@
 import numpy as np
 
 
-def observation_block_forward(A, mx_forward, Vx_forward, my_backward, Vy_backward):
+def observation_block_forward(
+    A: np.ndarray, mx_forward: np.ndarray, Vx_forward: np.ndarray, my_backward: np.ndarray, Vy_backward: np.ndarray
+):
     """
     Forward Gaussian message passing through an observation block (Table V in Loeliger2016) with one scalar observation.
 
     Args:
-        mx_forward (torch.FloatTensor): X mean with one dimension of length K.
-        Vx_forward (torch.FloatTensor): X variance with two dimensions of length K.
-        my_backward (torch.FloatTensor): Y mean with zero dimension.
-        Vy_backward (torch.FloatTensor): Y variance with zero dimension.
-        A (torch.FloatTensor): observation tensor one dimension of length K.
+        A (np.ndarray): state to observation matrix.
+        mx_forward (np.ndarray): forward state mean vector.
+        Vx_forward (np.ndarray): forward state covariance matrix.
+        my_backward (np.ndarray): backward observation mean.
+        Vy_backward (np.ndarray): backward observation variance.
 
     Returns:
-        (torch.FloatTensor): Z mean with one dimension of length K.
-        (torch.FloatTensor): Z variance with two dimensions of length K.
+        mz_forward (np.ndarray): forward state mean vector following the observation block.
+        Vz_forward (np.ndarray): forward state covariance matrix following the observation block.
     """
-    assert my_backward.size == 1
-    assert Vy_backward.size == 1
-
     Vx_forward_At = Vx_forward @ A
-    
+
     g = 1 / (Vy_backward + np.inner(A, Vx_forward_At))
-    
+
     mz_forward = mx_forward + g * (my_backward - np.inner(A, mx_forward)) * Vx_forward_At
     Vz_forward = Vx_forward - g * np.outer(Vx_forward_At, Vx_forward_At)
 
