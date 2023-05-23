@@ -303,4 +303,3 @@ class PeriodicSpikeTrain(SpikeTrain):
             s0 = np.random.uniform(0, self.period)
             s += s0
             self.firing_times.append(np.sort(s % self.period))
-            print(np.sort(s % self.period))
