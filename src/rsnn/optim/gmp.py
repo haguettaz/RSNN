@@ -1,22 +1,23 @@
+from typing import Tuple
+
 import numpy as np
 
 
 def observation_block_forward(
     A: np.ndarray, mx_forward: np.ndarray, Vx_forward: np.ndarray, my_backward: np.ndarray, Vy_backward: np.ndarray
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Forward Gaussian message passing through an observation block (Table V in Loeliger2016) with one scalar observation.
 
     Args:
-        A (np.ndarray): state to observation matrix.
-        mx_forward (np.ndarray): forward state mean vector.
-        Vx_forward (np.ndarray): forward state covariance matrix.
-        my_backward (np.ndarray): backward observation mean.
-        Vy_backward (np.ndarray): backward observation variance.
+        A (np.ndarray[float]): state to observation matrix.
+        mx_forward (np.ndarray[float]): forward state mean vector.
+        Vx_forward (np.ndarray[float]): forward state covariance matrix.
+        my_backward (np.ndarray[float]): backward observation mean.
+        Vy_backward (np.ndarray[float]): backward observation variance.
 
     Returns:
-        mz_forward (np.ndarray): forward state mean vector following the observation block.
-        Vz_forward (np.ndarray): forward state covariance matrix following the observation block.
+        Tuple[np.ndarray[float], np.ndarray[float]]: forward state mean vector and convariance matrix following the observation block.
     """
     Vx_forward_At = Vx_forward @ A
 
