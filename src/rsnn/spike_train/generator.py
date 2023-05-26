@@ -16,9 +16,9 @@ class SpikeTrainGenerator:
         Setup the survival distribution.
 
         Args:
-            firing_rate (float): the firing rate in [kHz].
-            abs_refractory_time (float): the absolute refractory time in [ms].
-            rel_refractory_time (float): the relative refractory time in [ms].
+            firing_rate (float): The firing rate in [kHz].
+            abs_refractory_time (float): The absolute refractory time in [ms].
+            rel_refractory_time (float): The relative refractory time in [ms].
         """
         self.survival_dist = SurvivalDistribution(firing_rate, abs_refractory_time, rel_refractory_time)
 
@@ -27,11 +27,11 @@ class SpikeTrainGenerator:
         Returns a SpikeTrain or a MultiChannelSpikeTrain of duration `duration` [ms].
 
         Args:
-            duration (float): the duration.
-            num_channels (int, optional): the number of channels / neurons. If None, returns a `SpikeTrain`, otherwise a `MultiChannelSpikeTrain`. Defaults to None.
+            duration (float): The duration.
+            num_channels (int, optional): The number of channels / neurons. If None, returns a `SpikeTrain`, otherwise a `MultiChannelSpikeTrain`. Defaults to None.
 
         Raises:
-            ValueError: if the duration is not positive.
+            ValueError: If the duration is not positive.
 
         Returns:
             (SpikeTrain or MultiChannelSpikeTrain): a spike train or a multi-channel spike train.
@@ -70,9 +70,9 @@ class PeriodicSpikeTrainGenerator:
         Setup the survival distribution and the linear distribution for the approximation.
 
         Args:
-            firing_rate (float): the firing rate in [kHz].
-            abs_refractory_time (float): the absolute refractory time in [ms].
-            rel_refractory_time (float): the relative refractory time in [ms].
+            firing_rate (float): The firing rate in [kHz].
+            abs_refractory_time (float): The absolute refractory time in [ms].
+            rel_refractory_time (float): The relative refractory time in [ms].
         """
         self.survival_dist = SurvivalDistribution(firing_rate, abs_refractory_time, rel_refractory_time)
         self.linear_dist = LinearDistribution()
@@ -82,11 +82,11 @@ class PeriodicSpikeTrainGenerator:
         Returns a PeriodicSpikeTrain or a MultiChannelPeriodicSpikeTrain of period `period` [ms].
 
         Args:
-            period (float): the period.
-            num_channels (int, optional): the number of channels / neurons. If None, returns a `PeriodicSpikeTrain`, otherwise a `MultiChannelPeriodicSpikeTrain`. Defaults to None.
+            period (float): The period.
+            num_channels (int, optional): The number of channels / neurons. If None, returns a `PeriodicSpikeTrain`, otherwise a `MultiChannelPeriodicSpikeTrain`. Defaults to None.
 
         Raises:
-            ValueError: if the period is not positive.
+            ValueError: If the period is not positive.
 
         Returns:
             (PeriodicSpikeTrain or MultiChannelPeriodicSpikeTrain): a spike train or a multi-channel spike train.
@@ -101,7 +101,7 @@ class PeriodicSpikeTrainGenerator:
         step = self.survival_dist.ppf(0.5) / 100
 
         # Create the time vector, should be even for the FFT-based convolution
-        # Note: the maximum time is set to 5 standard deviations above the mean, using CLT for the sum of nmax iid random variables
+        # Note: The maximum time is set to 5 standard deviations above the mean, using CLT for the sum of nmax iid random variables
         z = np.arange(0, nmax * self.survival_dist.mean() + 5 * self.survival_dist.std() * np.sqrt(nmax), step)
         if z.size % 2:
             z.resize(z.size - 1)  # Remove the last element of z in place
@@ -116,7 +116,7 @@ class PeriodicSpikeTrainGenerator:
         # Compute all necessary forward messages (up to nmax)
         fmus = []
         pnft = np.ones_like(pft)
-        for n in range(1, nmax + 1):  # Note: the number of spikes is upper bounded
+        for n in range(1, nmax + 1):  # Note: The number of spikes is upper bounded
             pnft = pnft * pft
             pn = np.clip(np.fft.irfft(pnft), 0, None)
             fmus.append(pn)
@@ -140,14 +140,14 @@ class PeriodicSpikeTrainGenerator:
             # Note: 0 and period are assumed to be a (unique) firing time
             s = np.full(n, period, dtype=float)
             for m in range(n - 2, -1, -1):
-                # Note: the first and last elements of psm are always zero
+                # Note: The first and last elements of psm are always zero
                 psm = norm(fmus[m] * self.survival_dist.pdf(s[m + 1] - z))
 
                 # Sample the discrete bin containing the current firing time
                 bin = np.random.choice(psm.size, p=psm)
 
                 # Sample in the continuous interval using linear interpolation
-                # Note: the resolution is good enough to neglect higher order terms
+                # Note: The resolution is good enough to neglect higher order terms
                 self.linear_dist.a = z[bin - 1]
                 self.linear_dist.b = z[bin + 1]
                 self.linear_dist.slope = (psm[bin + 1] - psm[bin - 1]) / (2 * step)
@@ -173,14 +173,14 @@ class PeriodicSpikeTrainGenerator:
             # Note: 0 and period are assumed to be a (unique) firing time
             s = np.full(n, period, dtype=float)
             for m in range(n - 2, -1, -1):
-                # Note: the first and last elements of psm are always zero
+                # Note: The first and last elements of psm are always zero
                 psm = norm(fmus[m] * self.survival_dist.pdf(s[m + 1] - z))
 
                 # Sample the discrete bin containing the current firing time
                 bin = np.random.choice(psm.size, p=psm)
 
                 # Sample in the continuous interval using linear interpolation
-                # Note: the resolution is good enough to neglect higher order terms
+                # Note: The resolution is good enough to neglect higher order terms
                 self.linear_dist.a = z[bin - 1]
                 self.linear_dist.b = z[bin + 1]
                 self.linear_dist.slope = (psm[bin + 1] - psm[bin - 1]) / (2 * step)

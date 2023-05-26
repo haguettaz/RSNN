@@ -1,5 +1,5 @@
 import random
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 
@@ -7,15 +7,34 @@ from ..optim.optim import compute_bounded_discrete_weights, compute_bounded_weig
 from ..spike_train.periodic_spike_train import MultiChannelPeriodicSpikeTrain
 from ..spike_train.spike_train import SpikeTrain
 
-# from ..signals.utils import sphere_intersection, sphere_intersection_complement
-
 
 class Neuron:
+    """A class representing a spiking neuron.
+
+    Attributes:
+        idx (int): The neuron unique index.
+        firing_threshold (float): The neuron firing threshold in [theta].
+        synapses (List[Synapse]): The neuron list of incoming synapses.
+        refractory (Refractory): The neuron refractory.
+        spike_train (SpikeTrain): The neuron spike train.
+
+    Methods:
+        reset: Reset the spike train of the neuron.
+        update: Simulate the network on a given time range.
+        memorize: Memorize the given spike train.
+        potential: Compute the neuron potential.
+        potential_deriv: Compute the neuron potential derivative.
+
+    Properties:
+        num_synapses (int): The number of incoming synapses.
+        config (Dict[str, Any]): The neuron configuration dictionnary.
+    """
+
     def __init__(self, idx: int, firing_threshold: float, soma_decay: float):
         """
         Args:
-            idx (int): the neuron index.
-            firing_threshold (float): the firing threshold in [theta].
+            idx (int): The neuron index.
+            firing_threshold (float): The firing threshold in [theta].
         """
         self.idx = idx
         self.firing_threshold = firing_threshold
@@ -25,67 +44,66 @@ class Neuron:
 
     @property
     def num_synapses(self) -> int:
-        """
+        """Get the number of incoming synapses of the neuron.
+
         Returns:
-            (int): the number of synapses.
+            int: The number of synapses.
         """
         return len(self.synapses)
 
     @property
     def config(self) -> Dict[str, Any]:
-        """
+        """Get the neuron configuration.
+
         Returns:
-            (Dict[str, Any]): the neuron configuration.
+            Dict[str, Any]: The neuron configuration.
         """
         return {
             "idx": self.idx,
             "firing_threshold": self.firing_threshold,
             "synapses": [synapse.config for synapse in self.synapses],
-            "refractory": self.refractory.config if self.refractory is not None else None,
+            "refractory": self.refractory.config,
             "firing_times": self.spike_train.firing_times,
         }
 
-    def potential(self, t: float):
+    def potential(self, t: float) -> np.ndarray:
         """
         Returns the instantaneous neuron potential at time t.
 
         Args:
-            t (float): the time in [ms].
+            t (float): The time in [ms].
 
         Returns:
-            (float): the neuron potential in [theta].
+            np.ndarray[float]: The neuron potential in [theta].
         """
-        return sum([synapse.information_flow(t) for synapse in self.synapses]) + self.refractory.information_flow(t)
+        return np.sum([synapse.information_flow(t) for synapse in self.synapses]) + self.refractory.information_flow(t)
 
-    def potential_deriv(self, t: float):
+    def potential_deriv(self, t: float) -> np.ndarray:
         """
         Returns the instantaneous neuron potential derivative at time t.
 
         Args:
-            t (float): the time in [ms].
+            t (float): The time in [ms].
 
         Returns:
-            (float): the neuron potential derivative in [theta/ms].
+            np.ndarray[float]: The neuron potential derivative in [theta/ms].
         """
-        return sum(
+        return np.sum(
             [synapse.information_flow_deriv(t) for synapse in self.synapses]
         ) + self.refractory.information_flow_deriv(t)
 
     def reset(self):
-        """
-        Reset the neuron firing times.
-        """
+        """Reset the neuron spike train."""
         self.spike_train.reset()
 
-    def step(self, t: float, dt: float, std_theta: float, tol: float = 1e-6):
-        """
-        Advance the neuron state by one time step.
+    def update(self, t: float, dt: float, std_theta: float, tol: float = 1e-6):
+        """Update the neuron state.
 
         Args:
-            t (float): the current time in [ms].
-            dt (float): the time step in [ms].
-            std_theta (float): the standard deviation of the firing threshold in [theta].
-            tol (float, optional): the time tolerance in [ms]. Defaults to 1e-6.
+            t (float): The current time in [ms].
+            dt (float): The time step in [ms].
+            std_theta (float): The standard deviation of the firing threshold in [theta].
+            tol (float, optional): The time tolerance in [ms]. Defaults to 1e-6.
         """
         z = self.potential(t)
         if z > self.noisy_firing_threshold:
@@ -106,37 +124,34 @@ class Neuron:
 
     def memorize(
         self,
-        multi_channel_periodic_spike_trains: Union[
-            MultiChannelPeriodicSpikeTrain, Iterable[MultiChannelPeriodicSpikeTrain]
-        ],
+        multi_channel_periodic_spike_trains: Iterable[MultiChannelPeriodicSpikeTrain],
         synapse_weight_lim: Tuple[float, float],
         refractory_weight_lim: Tuple[float, float],
         max_level: float,
         min_slope: float,
         firing_region: float,
         sampling_rate: float,
-        discretization: Optional[int]=None,
-    ):
-        """
-        Memorize the spike trains, i.e., solve the corresponding otimization problem by IRLS.
+        discretization: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Memorize the spike trains, i.e., solve the corresponding otimization problem by IRLS.
 
         Args:
-            multi_channel_periodic_spike_trains (Union[MultiChannelPeriodicSpikeTrain, Iterable[MultiChannelPeriodicSpikeTrain]]): the multi-channel periodic spike train(s).
-            synapse_weight_lim (Tuple[float, float]): the synaptic weight range in [theta].
-            refractory_weight_lim (Tuple[float, float]): the refractory weight range in [theta].
-            max_level (float, optional): the maximum level at rest in [theta]. Defaults to 0.0.
-            min_slope (float, optional): the minimum slope around a spike in [theta / ms]. Defaults to 0.0.
-            firing_surrounding (float, optional): the surrounding of a spike in [ms]. Defaults to 1.0.
-            sampling_rate (float): the sampling rate in [kHz]. Defaults to 5.0.
-            discretization (int or None): the weight discretization level. Defaults to None.
+            multi_channel_periodic_spike_trains (Iterable[MultiChannelPeriodicSpikeTrain]): The multi-channel periodic spike train(s).
+            synapse_weight_lim (Tuple[float, float]): The synaptic weight range in [theta].
+            refractory_weight_lim (Tuple[float, float]): The refractory weight range in [theta].
+            max_level (float, optional): The maximum level at rest in [theta]. Defaults to 0.0.
+            min_slope (float, optional): The minimum slope around a spike in [theta / ms]. Defaults to 0.0.
+            firing_surrounding (float, optional): The surrounding of a spike in [ms]. Defaults to 1.0.
+            sampling_rate (float): The sampling rate in [kHz]. Defaults to 5.0.
+            discretization (int or None): The weight discretization level. Defaults to None.
 
         Raises:
-            ValueError: if the maximum level at rest is greater than the firing threshold.
-            ValueError: if the minimum slope around firing is negative.
-            ValueError: if the sampling rate is greater than the firing surrounding.
+            ValueError: If the maximum level at rest is greater than the firing threshold.
+            ValueError: If the minimum slope around firing is negative.
+            ValueError: If the sampling rate is greater than the firing surrounding.
 
         Returns:
-            (Dict): optimization summary dictionnary.
+            (Dict[str, Any]): The optimization summary dictionnary.
         """
         time_step = 1 / sampling_rate
         if max_level >= self.firing_threshold:
@@ -261,7 +276,6 @@ class Neuron:
                             ]
                         )
                     )
-                    # print("silent time:", t, yt[-1][-5:])
 
         zt_min = np.array(zt_min)
         zt_max = np.array(zt_max)
@@ -280,23 +294,38 @@ class Neuron:
 
 
 class Refractory:
-    """
-    Refractory class for RSNN.
+    """A class representing a refractory effect.
+
+    Attributes:
+        source (Neuron): The source neuron.
+        weight (float): The synaptic weight.
+        soma_decay (float): The somatic impulse response decay in [ms].
+        response (Callable): The (unit) refractory response to a unit impulse.
+        response_deriv (Callable): The (unit) refractory response derivative to a unit impulse.
+
+    Methods:
+        init_responses: Init the refractory response and derivative.
+        information_flow: Return the information flow through the refractory loop at a given time.
+        information_flow_deriv: Return the information flow derivative through the refractory loop at a given time.
+
+    Properties:
+        config (Dict[str, Any]): The refractory configuration dictionnary.
     """
 
     def __init__(self, source: Neuron, weight: float, soma_decay: float):
-        """
-        Initialize a refractory.
+        """Initialize a refractory.
 
         Args:
-            source (Neuron): the source neuron.
-            weight (float): the synaptic weight.
-            soma_decay (float): the somatic impulse response decay in [ms].
+            source (Neuron): The source neuron.
+            weight (float): The synaptic weight.
+            soma_decay (float): The somatic impulse response decay in [ms].
 
         Raises:
-            ValueError: if weight is non-negative.
-            ValueError: if soma_decay is non-negative.
+            ValueError: If weight is non-negative.
+            ValueError: If soma_decay is non-negative.
         """
+        self.source = source
+
         if weight < 0:
             raise ValueError("Weight must be non-negative.")
         self.weight = weight
@@ -305,23 +334,20 @@ class Refractory:
             raise ValueError("Somatic decay must be non-negative.")
         self.soma_decay = soma_decay
 
-        self.source = source
-
         self.init_responses()
 
     def init_responses(self):
-        """
-        Initializes the response functions.
-        """
+        """Initialize the response functions."""
 
         self.response = lambda t_: (t_ > 0) * -np.exp(-t_ / self.soma_decay)
         self.response_deriv = lambda t_: (t_ > 0) * np.exp(-t_ / self.soma_decay) / self.soma_decay
-                    
+
     @property
     def config(self) -> Dict[str, Any]:
-        """
+        """Get the refractory configuration.
+
         Returns:
-            (Dict[str, Any]): the refractory configuration.
+            (Dict[str, Any]): The refractory configuration.
         """
         return {
             "source": self.source.idx,
@@ -329,26 +355,24 @@ class Refractory:
             "soma_decay": self.soma_decay,
         }
 
-    def information_flow(self, t: float):
-        """
-        Returns the information flow through the refractory at time t.
+    def information_flow(self, t: float) -> np.ndarray:
+        """Get the information flow through the refractory loop at time t.
 
         Args:
-            t (float): the time in [ms].
+            t (float): The time in [ms].
 
         Returns:
-            (float): the information flow.
+            (np.ndarray[float]): The information flow.
         """
         return self.weight * np.sum(self.response(t - self.source.spike_train.firing_times))
 
-    def information_flow_deriv(self, t: float):
-        """
-        Returns the information flow derivative through the refractory at time t.
+    def information_flow_deriv(self, t: float) -> np.ndarray:
+        """Get the information flow derivative through the refractory loop at time t.
 
         Args:
-            t (float): the time in [ms].
+            t (float): The time in [ms].
 
         Returns:
-            (float): the information flow derivative.
+            (np.ndarray[float]): The information flow derivative.
         """
         return self.weight * np.sum(self.response_deriv(t - self.source.spike_train.firing_times))

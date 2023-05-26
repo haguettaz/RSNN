@@ -21,16 +21,16 @@ def compute_bounded_weights(
     Compute the bounded weights to satisfy the potential template, using IRLS-based method.
 
     Args:
-        yt (np.ndarray[float]): the linear transformations from weights to observations.
-        zt_min (np.ndarray[float]): the smallest admissible observation values.
-        zt_max (np.ndarray[float]): the largest admissible observation values.
-        w_min (np.ndarray[float]): the smallest admissible weight values.
-        w_max (np.ndarray[float]): the largest admissible weight values.
-        max_iter (int, optional): the maximum number of iterations. Defaults to 1000.
-        err_tol (float, optional): the maximum error to stop the algorithm. Defaults to 1e-3.
+        yt (np.ndarray[float]): The linear transformations from weights to observations.
+        zt_min (np.ndarray[float]): The smallest admissible observation values.
+        zt_max (np.ndarray[float]): The largest admissible observation values.
+        w_min (np.ndarray[float]): The smallest admissible weight values.
+        w_max (np.ndarray[float]): The largest admissible weight values.
+        max_iter (int, optional): The maximum number of iterations. Defaults to 1000.
+        err_tol (float, optional): The maximum error to stop the algorithm. Defaults to 1e-3.
 
     Returns:
-        Tuple[np.ndarray[float], Dict[str, Any]]: the bounded weights and the optimization summary.
+        Tuple[np.ndarray[float], Dict[str, Any]]: The bounded weights and the optimization summary.
     """
 
     firing_selection = np.logical_and(np.isfinite(zt_min), np.isfinite(zt_max))
@@ -102,17 +102,17 @@ def compute_bounded_discrete_weights(
     Compute the discrete bounded weights to satisfy the potential template, using IRLS-based method.
 
     Args:
-        yt (np.ndarray[float]): the linear transformations from weights to observations.
-        zt_min (np.ndarray[float]): the smallest admissible observation values.
-        zt_max (np.ndarray[float]): the largest admissible observation values.
-        w_min (np.ndarray[float]): the smallest admissible weight values.
-        w_max (np.ndarray[float]): the largest admissible weight values.
-        w_lvl (int): the number of discrete levels for all weights.
-        max_iter (int, optional): the maximum number of iterations. Defaults to 5000.
-        err_tol (float, optional): the maximum error to stop the algorithm. Defaults to 1e-3.
+        yt (np.ndarray[float]): The linear transformations from weights to observations.
+        zt_min (np.ndarray[float]): The smallest admissible observation values.
+        zt_max (np.ndarray[float]): The largest admissible observation values.
+        w_min (np.ndarray[float]): The smallest admissible weight values.
+        w_max (np.ndarray[float]): The largest admissible weight values.
+        w_lvl (int): The number of discrete levels for all weights.
+        max_iter (int, optional): The maximum number of iterations. Defaults to 5000.
+        err_tol (float, optional): The maximum error to stop the algorithm. Defaults to 1e-3.
 
     Returns:
-        Tuple[np.ndarray[float], Dict[str, Any]]: the bounded weights and the optimization summary.
+        Tuple[np.ndarray[float], Dict[str, Any]]: The bounded weights and the optimization summary.
     """
 
     firing_selection = np.logical_and(np.isfinite(zt_min), np.isfinite(zt_max))

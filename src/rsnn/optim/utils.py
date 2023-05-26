@@ -10,12 +10,12 @@ def box_error(x: np.ndarray, x_min: np.ndarray, x_max: np.ndarray) -> np.ndarray
     Calculate the box constraint error for a set of posterior means.
 
     Args:
-        x (np.ndarray[float]): the posterior means.
-        x_min (np.ndarray[float]): the smallest admissible values.
-        x_max (np.ndarray[float]): the largest admissible values.
+        x (np.ndarray[float]): The posterior means.
+        x_min (np.ndarray[float]): The smallest admissible values.
+        x_max (np.ndarray[float]): The largest admissible values.
 
     Returns:
-        np.ndarray[float]: the box constraint error.
+        np.ndarray[float]: The box constraint error.
     """
     err = np.zeros(1)
 
@@ -49,11 +49,11 @@ def bin_error(x: np.ndarray, x_min: np.ndarray, x_max: np.ndarray) -> float:
     Calculate the binarization constraint error for a set of posterior means.
 
     Args:
-        x (np.ndarray[float]): the posterior means.
-        x_min (np.ndarray[float]): the smallest admissible values.
-        x_max (np.ndarray[float]): the largest admissible values.
+        x (np.ndarray[float]): The posterior means.
+        x_min (np.ndarray[float]): The smallest admissible values.
+        x_max (np.ndarray[float]): The largest admissible values.
 
     Returns:
-        np.ndarray[float]: the binarization constraint error.
+        np.ndarray[float]: The binarization constraint error.
     """
     return np.max(np.minimum(x - x_min, x_max - x))

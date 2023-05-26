@@ -18,7 +18,7 @@ class SpikeTrain:
         Initialize a spike train.
 
         Args:
-            firing_times (Optional[np.ndarray]): the firing times of the spike train in [ms]. Default to None.
+            firing_times (Optional[np.ndarray]): The firing times of the spike train in [ms]. Default to None.
         """
         if firing_times is None:
             self.firing_times = np.array([])
@@ -31,7 +31,7 @@ class SpikeTrain:
         Returns the configuration of the spike train.
 
         Returns:
-            (Dict[str, np.ndarray]): the spike train configuration.
+            (Dict[str, np.ndarray]): The spike train configuration.
         """
         return {"firing_times": self.firing_times}
 
@@ -46,7 +46,7 @@ class SpikeTrain:
         Save the spike train configuration to a file.
 
         Args:
-            filename (str): the name of the file to save to.
+            filename (str): The name of the file to save to.
         """
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -63,12 +63,12 @@ class SpikeTrain:
         Load the spike train from a file.
 
         Args:
-            filename (str): the name of the file to load from.
+            filename (str): The name of the file to load from.
 
         Raises:
-            FileNotFoundError: if the file does not exist
-            ValueError: if number of neurons does not match
-            ValueError: if error loading the file
+            FileNotFoundError: If the file does not exist
+            ValueError: If number of neurons does not match
+            ValueError: If error loading the file
         """
 
         # Check if the file exists
@@ -91,7 +91,7 @@ class SpikeTrain:
         Returns the number of spikes in the spike train.
 
         Returns:
-            (int): the number of spikes.
+            (int): The number of spikes.
         """
         return self.firing_times.size
 
@@ -100,7 +100,7 @@ class SpikeTrain:
         Add a firing time to the spike train.
 
         Args:
-            t (float): the firing time in [ms].
+            t (float): The firing time in [ms].
         """
         self.firing_times = np.append(self.firing_times, t)
 
@@ -109,7 +109,7 @@ class SpikeTrain:
         Add jitter to the spike train.
 
         Args:
-            std (float): the standard deviation of the jitter in [ms].
+            std (float): The standard deviation of the jitter in [ms].
         """
         self.firing_times += np.random.normal(0, std, self.firing_times.shape)
 
@@ -137,12 +137,12 @@ class MultiChannelSpikeTrain:
         Initialize a multi-channel spike train.
 
         Args:
-            num_channels (int): the number of channels / neurons.
-            firing_times (Optional[List[np.ndarray]]): the firing times of the spike train in [ms]. Default to None.
+            num_channels (int): The number of channels / neurons.
+            firing_times (Optional[List[np.ndarray]]): The firing times of the spike train in [ms]. Default to None.
 
         Raises:
-            ValueError: if number of channels is not positive.
-            ValueError: if number of firing times does not match number of channels.
+            ValueError: If number of channels is not positive.
+            ValueError: If number of firing times does not match number of channels.
         """
         if num_channels <= 0:
             raise ValueError("Number of channels must be positive.")
@@ -168,7 +168,7 @@ class MultiChannelSpikeTrain:
         Returns the number of spikes.
 
         Returns:
-            (int): the number of spikes.
+            (int): The number of spikes.
         """
         return sum([spike_train.num_spikes for spike_train in self.spike_trains])
 
@@ -177,7 +177,7 @@ class MultiChannelSpikeTrain:
         Save the multi-channel spike train configuration to a file.
 
         Args:
-            filename (str): the name of the file to save to.
+            filename (str): The name of the file to save to.
         """
         config = [spike_train.config for spike_train in self.spike_trains]
 
@@ -196,12 +196,12 @@ class MultiChannelSpikeTrain:
         Load the multi-channel spike train from a file.
 
         Args:
-            filename (str): the name of the file to load from.
+            filename (str): The name of the file to load from.
 
         Raises:
-            FileNotFoundError: if the file does not exist
-            ValueError: if number of neurons does not match
-            ValueError: if error loading the file
+            FileNotFoundError: If the file does not exist
+            ValueError: If number of neurons does not match
+            ValueError: If error loading the file
         """
 
         # Check if the file exists

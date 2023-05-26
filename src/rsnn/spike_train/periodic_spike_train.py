@@ -19,8 +19,8 @@ class PeriodicSpikeTrain(SpikeTrain):
         Initialize a periodic spike train.
 
         Args:
-            period (float): the period of the spike train in [ms].
-            firing_times (Optional[np.ndarray]): the firing times of the spike train in [ms].
+            period (float): The period of the spike train in [ms].
+            firing_times (Optional[np.ndarray]): The firing times of the spike train in [ms].
         """
         if period <= 0:
             raise ValueError("The period must be positive.")
@@ -38,7 +38,7 @@ class PeriodicSpikeTrain(SpikeTrain):
         Returns the number of spikes in the spike train.
         
         Returns:
-            (int): the number of spikes in the spike train.
+            (int): The number of spikes in the spike train.
         """
         return super().num_spikes
 
@@ -53,14 +53,14 @@ class MultiChannelPeriodicSpikeTrain(MultiChannelSpikeTrain):
         Initialize a multi-channel periodic spike train.
 
         Args:
-            period (float): the period in [ms].
-            num_channels (int): the number of channels / neurons.
+            period (float): The period in [ms].
+            num_channels (int): The number of channels / neurons.
             firing_times (list): a list of arrays of firing times in [ms]. Defaults to None.
 
         Raises:
-            ValueError: if number of channels is not positive.
-            ValueError: if period is not positive.
-            ValueError: if number of firing times does not match number of channels.
+            ValueError: If number of channels is not positive.
+            ValueError: If period is not positive.
+            ValueError: If number of firing times does not match number of channels.
         """
         if period <= 0:
             raise ValueError("The period must be positive.")
@@ -83,6 +83,6 @@ class MultiChannelPeriodicSpikeTrain(MultiChannelSpikeTrain):
         Return the number of spikes in the multi-channel spike train.
 
         Returns:
-            (int): the number of spikes.
+            (int): The number of spikes.
         """
         return super().num_spikes

@@ -9,11 +9,11 @@ import numpy as np
 #     Returns the Phi matrix corresponding to the spike train and the network.
 
 #     Args:
-#         spike_train (PeriodicSpikeTrain): the spike train.
-#         network (Network): the network.
+#         spike_train (PeriodicSpikeTrain): The spike train.
+#         network (Network): The network.
 
 #     Returns:
-#         (np.ndarray): the Phi matrix.
+#         (np.ndarray): The Phi matrix.
 #     """
 #     firing_times = np.concatenate(spike_train.firing_times).tolist()
 #     sources = [neuron for neuron in network.neurons for _ in range(spike_train.num_spikes(neuron.idx))]
@@ -44,10 +44,10 @@ def norm(x:np.ndarray):
     Normalizes the given array to sum to 1.
 
     Args:
-        x (np.ndarray): the array to normalize.
+        x (np.ndarray): The array to normalize.
 
     Returns:
-        (np.ndarray): the normalized array.
+        (np.ndarray): The normalized array.
     """
     return x / np.sum(x)
 
@@ -56,11 +56,11 @@ def mod(x:np.ndarray, modulo:float, offset:float=0.0):
     Returns the componentwise modulo with offset of the given array.
 
     Args:
-        x (np.ndarray): the array to take the modulo of.
-        modulo (float): the modulo to use.
-        offset (float, optional): the offset. Defaults to 0.0.
+        x (np.ndarray): The array to take the modulo of.
+        modulo (float): The modulo to use.
+        offset (float, optional): The offset. Defaults to 0.0.
 
     Returns:
-        (np.ndarray): the componentwise modulo with offset of the given array.
+        (np.ndarray): The componentwise modulo with offset of the given array.
     """
     return x - np.floor((x - offset) / modulo) * modulo

@@ -49,11 +49,11 @@ def get_phi(multi_channel_periodic_spike_train, network):
     Returns the Phi matrix corresponding to the spike train and the network.
 
     Args:
-        spike_train (MultiChannelPeriodicSpikeTrain): the multi-channel periodic spike train.
-        network (Network): the network.
+        spike_train (MultiChannelPeriodicSpikeTrain): The multi-channel periodic spike train.
+        network (Network): The network.
 
     Returns:
-        (np.ndarray): the Phi matrix.
+        (np.ndarray): The Phi matrix.
     """
     # firing_times = np.concatenate(spike_train.firing_times).tolist()
     firing_times = np.concatenate([spike_train.firing_times for spike_train in multi_channel_periodic_spike_train.spike_trains])

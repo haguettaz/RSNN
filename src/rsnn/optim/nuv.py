@@ -14,13 +14,13 @@ def box_prior(
     NUV composite box prior to enforce x_min <= mx <= x_max elementwise.
 
     Args:
-        mx (np.ndarray[float]): the posterior means.
-        x_min (np.ndarray[float]): the smallest admissible values.
-        x_max (np.ndarray[float]): the largest admissible values.
-        gamma (float, optional): the constraint' hardness parameter, the smaller the softer. Defaults to 1.0.
+        mx (np.ndarray[float]): The posterior means.
+        x_min (np.ndarray[float]): The smallest admissible values.
+        x_max (np.ndarray[float]): The largest admissible values.
+        gamma (float, optional): The constraint' hardness parameter, the smaller the softer. Defaults to 1.0.
 
     Returns:
-        Tuple[np.ndarray[float], np.ndarray[float]]: the box prior means and variances.
+        Tuple[np.ndarray[float], np.ndarray[float]]: The box prior means and variances.
     """
 
     if np.any(x_min > x_max):
@@ -76,7 +76,7 @@ def binary_prior(mx:np.ndarray, Vx:np.ndarray, x_min:np.ndarray, x_max:np.ndarra
         x_max (np.ndarray[float]): largest admissible values.
 
     Returns:
-        Tuple[np.ndarray[float], np.ndarray[float]]: the binary prior means and variances.
+        Tuple[np.ndarray[float], np.ndarray[float]]: The binary prior means and variances.
     """
     if np.any(x_min > x_max):
         raise ValueError("x_min cannot be larger than x_max")

@@ -12,7 +12,7 @@ class LinearDistribution(rv_continuous):
         Initialize the linear distribution.
 
         Args:
-            slope (float): the slope of the distribution.
+            slope (float): The slope of the distribution.
         """
         
         super().__init__(*args, **kwargs)
@@ -23,10 +23,10 @@ class LinearDistribution(rv_continuous):
         Probability density function of the linear distribution.
 
         Args:
-            x (np.ndarray): the value to evaluate the pdf at.
+            x (np.ndarray): The value to evaluate the pdf at.
 
         Returns:
-            (np.ndarray): the pdf value at x.
+            (np.ndarray): The pdf value at x.
         """
         return self.slope * x 
 
@@ -37,14 +37,14 @@ class SurvivalDistribution(rv_continuous):
         Initialize the spike distribution with the hazard and cumulative hazard of the survival model.
 
         Args:
-            firing_rate (float): the firing rate in [kHz].
-            abs_refractory_time (float): the absolute refractory time in [ms].
-            rel_refractory_time (float): the relative refractory time in [ms].
+            firing_rate (float): The firing rate in [kHz].
+            abs_refractory_time (float): The absolute refractory time in [ms].
+            rel_refractory_time (float): The relative refractory time in [ms].
 
         Raises:
-            ValueError: if the firing rate is not positive.
-            ValueError: if the absolute refractory time is not positive.
-            ValueError: if the relative refractory time is not positive.
+            ValueError: If the firing rate is not positive.
+            ValueError: If the absolute refractory time is not positive.
+            ValueError: If the relative refractory time is not positive.
         """
 
         super().__init__(*args, **kwargs)
@@ -76,10 +76,10 @@ class SurvivalDistribution(rv_continuous):
         Probability density function of the survival distribution.
 
         Args:
-            x (np.ndarray): the value to evaluate the pdf at.
+            x (np.ndarray): The value to evaluate the pdf at.
 
         Returns:
-            (np.ndarray): the pdf value at x.
+            (np.ndarray): The pdf value at x.
         """
         return self.hazard(x) * np.exp(-self.Hazard(x))
 
@@ -88,10 +88,10 @@ class SurvivalDistribution(rv_continuous):
         Cumulative density function of the survival distribution.
 
         Args:
-            x (np.ndarray): the value to evaluate the cdf at.
+            x (np.ndarray): The value to evaluate the cdf at.
 
         Returns:
-            (np.ndarray): the cdf value at x.
+            (np.ndarray): The cdf value at x.
         """
         return 1 - np.exp(-self.Hazard(x))
 

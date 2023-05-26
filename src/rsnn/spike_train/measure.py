@@ -17,14 +17,14 @@ from .spike_train import MultiChannelSpikeTrain, SpikeTrain
 #     Local means the correlation is computed for each channel separately.
 
 #     Args:
-#         periodic_spike_trains (List[np.ndarray]): the firing times of the ideal (period) spike train.
-#         spike_trains (List[np.ndarray]): the firing times of the actual spike train.
-#         period (float): the period of the ideal spike train.
-#         eps (float, optional): the half-width of the triangular kernel in [ms]. Defaults to 1.0.
+#         periodic_spike_trains (List[np.ndarray]): The firing times of the ideal (period) spike train.
+#         spike_trains (List[np.ndarray]): The firing times of the actual spike train.
+#         period (float): The period of the ideal spike train.
+#         eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
 
 #     Returns:
-#         (float): the maximal correlation between the two spike trains.
-#         (float): the lag at which the correlation is maximal.
+#         (float): The maximal correlation between the two spike trains.
+#         (float): The lag at which the correlation is maximal.
 #     """
 
 #     kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
@@ -62,13 +62,13 @@ def single_channel_correlation(periodic_spike_train: PeriodicSpikeTrain, spike_t
     Compute the correlation between a (periodic) spike train and a spike train, using a triangular kernel.
 
     Args:
-        periodic_spike_train (PeriodicSpikeTrain): the periodic spike train.
-        spike_train (SpikeTrain): the spike train.
-        eps (float, optional): the half-width of the triangular kernel in [ms]. Defaults to 1.0.
+        periodic_spike_train (PeriodicSpikeTrain): The periodic spike train.
+        spike_train (SpikeTrain): The spike train.
+        eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
 
     Returns:
-        (float): the maximal correlation between the two spike trains.
-        (float): the lag at which the correlation is maximal.
+        (float): The maximal correlation between the two spike trains.
+        (float): The lag at which the correlation is maximal.
     """
     # Define the triangular kernel
     kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
@@ -102,18 +102,18 @@ def multi_channel_correlation(
 ):
     """
     Args:
-        multi_channel_periodic_spike_train (MultiChannelPeriodicSpikeTrain): the multi-channel periodic spike train.
-        multi_channel_spike_train (MultiChannelSpikeTrain): the multi-channel spike train.
-        eps (float, optional): the half-width of the triangular kernel in [ms]. Defaults to 1.0.
+        multi_channel_periodic_spike_train (MultiChannelPeriodicSpikeTrain): The multi-channel periodic spike train.
+        multi_channel_spike_train (MultiChannelSpikeTrain): The multi-channel spike train.
+        eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
 
     Raises:
-        TypeError: if periodic_spike_trains is not a list of PeriodicSpikeTrain.
-        TypeError: if spike_trains is not a list of SpikeTrain.
-        ValueError: if periodic_spike_trains and spike_trains do not have the same number of channels.
+        TypeError: If periodic_spike_trains is not a list of PeriodicSpikeTrain.
+        TypeError: If spike_trains is not a list of SpikeTrain.
+        ValueError: If periodic_spike_trains and spike_trains do not have the same number of channels.
 
     Returns:
-        (float): the maximal correlation between the two spike trains.
-        (float): the lag at which the correlation is maximal.
+        (float): The maximal correlation between the two spike trains.
+        (float): The lag at which the correlation is maximal.
     """
 
     # TODO: implement this function
