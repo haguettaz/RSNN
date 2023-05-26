@@ -52,7 +52,7 @@ class SpikeTrainGenerator:
 
         # Multi-channel spike train
         firing_times = []
-        for _ in trange(num_channels, desc="Sampling multi-channel spike train"):
+        for _ in trange(num_channels, desc="Multi-channel spike train sampling"):
             # Uniformly chose the first spike in between -duration and 0
             s = np.random.uniform(-duration, 0.0, 1)
 
@@ -159,7 +159,7 @@ class PeriodicSpikeTrainGenerator:
 
         # Multi-channel spike train
         firing_times = []
-        for _ in trange(num_channels, desc="Sampling multi-channel spike train"):
+        for _ in trange(num_channels, desc="Multi-channel periodic spike train sampling"):
             # Sample the number of spikes
             pn = np.full(nmax + 1, 1 - self.survival_dist.cdf(period))
             pn[1:] = norm(fmus[:, -1]) * self.survival_dist.cdf(period)

@@ -1,4 +1,7 @@
+import math
 import random
+
+from tqdm import tqdm
 
 from .network import Network, Synapse
 
@@ -28,10 +31,10 @@ class NetworkGenerator:
         Args:
             firing_threshold (float): The threshold at which a neuron fires.
             soma_decay (float): The decay rate of the neuron's soma potential.
-            num_synapses (int): The number of synapses per neuron. Not used if `kind` is "full"
+            num_synapses (int): The number of synapses per neuron.
             synapse_decay (float): The decay rate of the synapse's weight.
             synapse_delay_lim (tuple): A tuple containing the minimum and maximum delay of any synapse.
-            kind (str, optional): The type of network to generate. Can be "in" (constant in-degree), "out" (constant out-degree), or "full" (fully connected). Defaults to "in".
+            kind (str, optional): The type of network to generate. Can be "in" (constant in-degree), "out" (constant out-degree), or "both" (constant in- and out-degree). Defaults to "in".
 
         Returns:
             A Network object representing the generated network.
@@ -52,13 +55,13 @@ class NetworkGenerator:
             raise ValueError("The minimum synapse delay must be less than the maximum synapse delay.")
 
         kind = kind or "in"
-        if kind not in {"in", "out", "full"}:
+        if kind not in {"in", "out", "both"}:
             raise ValueError("Invalid kind.")
-
+        
         network = Network(self.num_neurons, firing_threshold, soma_decay)
 
         if kind == "in":
-            for neuron in network.neurons:
+            for neuron in tqdm(network.neurons, desc="Network sampling"):
                 neuron.synapses = [
                     Synapse(
                         idx,
@@ -71,9 +74,9 @@ class NetworkGenerator:
                     for idx in range(num_synapses)
                 ]
             return network
-        
+
         if kind == "out":
-            for source in network.neurons:
+            for source in tqdm(network.neurons, desc="Network sampling"):
                 for _ in range(num_synapses):
                     neuron = random.choice(network.neurons)
                     neuron.synapses.append(
@@ -88,17 +91,17 @@ class NetworkGenerator:
                     )
             return network
 
-        for neuron in network.neurons:
+        for neuron in tqdm(network.neurons, desc="Network sampling"):
             neuron.synapses = [
                 Synapse(
-                    source.idx,
-                    source,
+                    idx,
+                    network.neurons[(neuron.idx + 1 + idx) % self.num_neurons],
                     random.uniform(*synapse_delay_lim),
                     0,
                     soma_decay,
                     synapse_decay,
                 )
-                for source in network.neurons
+                for idx in range(num_synapses)
             ]
 
         return network
