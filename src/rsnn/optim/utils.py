@@ -1,59 +1,85 @@
-"""
-This module contains utility functions for performing various operations on arrays and matrices.
-"""
-
 import numpy as np
 
-
-def box_error(x: np.ndarray, x_min: np.ndarray, x_max: np.ndarray) -> np.ndarray:
-    """
-    Calculate the box constraint error for a set of posterior means.
-
-    Args:
-        x (np.ndarray[float]): The posterior means.
-        x_min (np.ndarray[float]): The smallest admissible values.
-        x_max (np.ndarray[float]): The largest admissible values.
-
-    Returns:
-        np.ndarray[float]: The box constraint error.
-    """
-    err = np.zeros(1)
-
-    mask_finite_xmin = np.isfinite(x_min)
-    mask_finite_xmax = np.isfinite(x_max)
-
-    # Left half-space, i.e., x <= x_max
-    mask = (~mask_finite_xmin) & mask_finite_xmax
-    if np.any(mask):
-        # print("left half-space", np.max(np.abs(x_max[mask] - x[mask]) - (x_max[mask] - x[mask])))
-        err = np.maximum(err, np.max(np.abs(x_max[mask] - x[mask]) - (x_max[mask] - x[mask])))
-
-    # Right half-space, i.e., x >= x_min
-    mask = (~mask_finite_xmax) & mask_finite_xmin
-    if np.any(mask):
-        # print("right half-space", np.max(np.abs(x[mask] - x_min[mask]) - (x[mask] - x_min[mask])))
-        err = np.maximum(err, np.max(np.abs(x[mask] - x_min[mask]) - (x[mask] - x_min[mask])))
-
-    # Box, i.e., x_min <= x <= x_max
-    mask = mask_finite_xmin & mask_finite_xmax
-    if np.any(mask):
-        x_, x_min_, x_max_ = x[mask], x_min[mask], x_max[mask]
-        # print("box", np.max(np.abs(x[mask] - x_min[mask]) + np.abs(x[mask] - x_max[mask]) - (x_max[mask] - x_min[mask])))
-        err = np.maximum(err, np.max(np.abs(x_ - x_min_) + np.abs(x_ - x_max_) - (x_max_ - x_min_)))  # type: ignore
-
-    return err
+from ..rsnn.filters import input_spike_resp, input_spike_resp_deriv, refractory_spike_resp
+from ..utils.utils import cyclic_after, cyclic_neighborhood
 
 
-def bin_error(x: np.ndarray, x_min: np.ndarray, x_max: np.ndarray) -> float:
-    """
-    Calculate the binarization constraint error for a set of posterior means.
+def compute_template(
+    input_spike_trains, target_spike_train, firing_threshold, max_level, firing_region, min_slope, time_step
+):
+    yf, ys, yl = [], [], []
+    zf, zs, zl = [], [], []
 
-    Args:
-        x (np.ndarray[float]): The posterior means.
-        x_min (np.ndarray[float]): The smallest admissible values.
-        x_max (np.ndarray[float]): The largest admissible values.
+    # equality at firing times
+    for t in target_spike_train.firing_times:
+        yf.append(
+            np.array(
+                [
+                    np.sum(input_spike_resp((t - spike_train.firing_times) % input_spike_trains.period))
+                    for spike_train in input_spike_trains.spike_trains
+                ]
+            )
+        )
+        zf.append(
+            firing_threshold
+            - np.sum(refractory_spike_resp((t - target_spike_train.firing_times) % target_spike_train.period))
+        )
 
-    Returns:
-        np.ndarray[float]: The binarization constraint error.
-    """
-    return np.max(np.minimum(x - x_min, x_max - x))
+    # smaller than the firing threshold everywhere (except during the absolute refractory period)
+    for t in cyclic_after(
+        target_spike_train.firing_times,
+        target_spike_train.period,
+        target_spike_train.abs_refractory_period,
+        time_step,
+        True,
+    ):
+        yl.append(
+            np.array(
+                [
+                    np.sum(input_spike_resp((t - spike_train.firing_times) % input_spike_trains.period))
+                    for spike_train in input_spike_trains.spike_trains
+                ]
+            )
+        )
+        zl.append(
+            firing_threshold
+            - np.sum(refractory_spike_resp((t - target_spike_train.firing_times) % target_spike_train.period))
+        )
+
+    # smaller than the maximum level not close to firing (except during the absolute refractory period)
+    for t in cyclic_neighborhood(
+        target_spike_train.firing_times,
+        target_spike_train.period,
+        firing_region,
+        target_spike_train.abs_refractory_period,
+        time_step,
+        True,
+    ):
+        yl.append(
+            np.array(
+                [
+                    np.sum(input_spike_resp((t - spike_train.firing_times) % input_spike_trains.period))
+                    for spike_train in input_spike_trains.spike_trains
+                ]
+            )
+        )
+        zl.append(
+            max_level
+            - np.sum(refractory_spike_resp((t - target_spike_train.firing_times) % target_spike_train.period))
+        )
+
+    # slope larger than the minimum slope close to firing
+    for t in cyclic_neighborhood(
+        target_spike_train.firing_times, target_spike_train.period, firing_region, firing_region, time_step
+    ):
+        ys.append(
+            np.array(
+                [
+                    np.sum(input_spike_resp_deriv((t - spike_train.firing_times) % input_spike_trains.period))
+                    for spike_train in input_spike_trains.spike_trains
+                ]
+            )
+        )
+        zs.append(min_slope)
+
+    return np.vstack(yf), np.array(zf), np.vstack(yl), np.array(zl), np.vstack(ys), np.array(zs)

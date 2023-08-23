@@ -5,7 +5,7 @@ from tqdm.autonotebook import trange
 
 from .gmp import observation_block_forward
 from .nuv import binary_prior, box_prior
-from .utils import bin_error, box_error
+from .cost import bin_error, box_error
 
 
 def compute_bounded_weights(

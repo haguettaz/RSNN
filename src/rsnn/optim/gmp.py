@@ -27,3 +27,7 @@ def observation_block_forward(
     Vz_forward = Vx_forward - g * np.outer(Vx_forward_At, Vx_forward_At)
 
     return mz_forward, Vz_forward
+
+
+def equality_block(mx: np.ndarray, Vx: np.ndarray, my: np.ndarray, Vy: np.ndarray):
+    return (mx * Vy + my * Vx) / (Vx + Vy), (Vx * Vy) / (Vx + Vy)

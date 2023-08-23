@@ -64,3 +64,76 @@ def mod(x:np.ndarray, modulo:float, offset:float=0.0):
         (np.ndarray): The componentwise modulo with offset of the given array.
     """
     return x - np.floor((x - offset) / modulo) * modulo
+
+def cyclic_neighborhood(x:np.ndarray, period:float, eps_left:float, eps_right:float, step:float=1.0, complement:bool=False):
+    t = 0.0
+    while t < period:
+        if np.any((x - t <= eps_left) & (x >= t)):
+            if complement:
+                t += step
+                continue
+            yield t
+        elif np.any((t - x <= eps_right) & (t >= x)):
+            if complement:
+                t += step
+                continue
+            yield t
+        elif np.any((period + x - t <= eps_left) & (period + x >= t)):
+            if complement:
+                t += step
+                continue
+            yield t
+        elif np.any((t - x + period <= eps_right) & (t >= x - period)):
+            if complement:
+                t += step
+                continue
+            yield t
+        if complement:
+            yield t
+        t += step
+        
+# def cyclic_remoteness(x:np.ndarray, period:float, eps:float, step:float):
+#     t = 0.0
+#     while t < period:
+#         if np.any(np.abs(x - t) <= eps):
+#             t += step
+#             continue
+#         elif np.any(np.abs(period + x - t) <= eps):
+#             t += step
+#             continue
+#         yield t
+#         t += step
+
+def cyclic_before(x:np.ndarray, period:float, eps:float, step:float=1.0, complement:bool=False):
+    t = 0.0
+    while t < period:
+        if np.any((x - t <= eps) & (x >= t)):
+            if complement:
+                t += step
+                continue
+            yield t
+        elif np.any((period + x - t <= eps) & (period + x >= t)):
+            if complement:
+                t += step
+                continue
+            yield t
+        if complement:
+            yield t
+        t += step
+
+def cyclic_after(x:np.ndarray, period:float, eps:float, step:float=1.0, complement:bool=False):
+    t = 0.0
+    while t < period:
+        if np.any((t - x <= eps) & (t >= x)):
+            if complement:
+                t += step
+                continue
+            yield t
+        elif np.any((t - x + period <= eps) & (t >= x - period)):
+            if complement:
+                t += step
+                continue
+            yield t
+        if complement:
+            yield t
+        t += step
