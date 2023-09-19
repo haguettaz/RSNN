@@ -1,109 +1,19 @@
-from typing import List
+from typing import Callable, List
 
 import numpy as np
 
-from ..utils.utils import mod
-from .periodic_spike_train import MultiChannelPeriodicSpikeTrain, PeriodicSpikeTrain
-from .spike_train import MultiChannelSpikeTrain, SpikeTrain
-
-# def local_correlation(
-#     periodic_spike_trains: List[np.ndarray],
-#     spike_trains: List[np.ndarray],
-#     period: float,
-#     eps: float = 1.0,
-# ):
-#     """
-#     Compute the local correlation between an ideal (periodic) spike train and a real one.
-#     Local means the correlation is computed for each channel separately.
-
-#     Args:
-#         periodic_spike_trains (List[np.ndarray]): The firing times of the ideal (period) spike train.
-#         spike_trains (List[np.ndarray]): The firing times of the actual spike train.
-#         period (float): The period of the ideal spike train.
-#         eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
-
-#     Returns:
-#         (float): The maximal correlation between the two spike trains.
-#         (float): The lag at which the correlation is maximal.
-#     """
-
-#     kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
-
-#     if not isinstance(periodic_spike_trains, List):
-#         raise TypeError("periodic_spike_trains must be a list of numpy arrays.")
-#     if not isinstance(spike_trains, List):
-#         raise TypeError("spike_trains must be a list of numpy arrays.")
-
-#     max_corr, max_shift = [], []
-#     for hat_s, s in zip(periodic_spike_trains, spike_trains):
-#         if (hat_s.shape[0] == 0) != (
-#             s.shape[0] == 0
-#         ):  # exactly one spike train is empty
-#             max_corr.append(0.0)
-#             max_shift.append(0.0)
-#             continue
-
-#         if (hat_s.shape[0] == 0) and (s.shape[0] == 0):  # both spike trains are empty
-#             max_corr.append(1.0)
-#             max_shift.append(0.0)
-#             continue
-
-#         t = (hat_s[None, :] - s[:, None]).flatten()
-#         corr = kernel((t[None, :] - t[:, None]) % period).sum(axis=1)
-#         argmax = np.argmax(corr)
-#         max_corr.append(corr[argmax] / max(hat_s.shape[0], s.shape[0]))
-#         max_shift.append(mod(t[argmax], period, -period / 2))
-
-#     return np.array(max_corr), np.array(max_shift)
+from ..utils.math import dist_mod, mod
 
 
-def single_channel_correlation(periodic_spike_train: PeriodicSpikeTrain, spike_train: SpikeTrain, eps: float = 1.0):
-    """
-    Compute the correlation between a (periodic) spike train and a spike train, using a triangular kernel.
-
-    Args:
-        periodic_spike_train (PeriodicSpikeTrain): The periodic spike train.
-        spike_train (SpikeTrain): The spike train.
-        eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
-
-    Returns:
-        (float): The maximal correlation between the two spike trains.
-        (float): The lag at which the correlation is maximal.
-    """
-    # Define the triangular kernel
-    kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
-
-    if periodic_spike_train.num_spikes == 0:
-        if spike_train.num_spikes == 0:
-            return 1.0, 0.0
-        return 0.0, np.nan
-
-    if spike_train.num_spikes == 0:
-        return 0.0, np.nan
-
-    # Compute all possible correlation maximizers
-    lags = (periodic_spike_train.firing_times[None, :] - spike_train.firing_times[:, None]).flatten()
-
-    corr = kernel(
-        mod(lags[None, :] - lags[:, None], periodic_spike_train.period, -periodic_spike_train.period / 2)
-    ).sum(axis=0)
-
-    argmax = np.argmax(corr)
-    return corr[argmax] / max(periodic_spike_train.num_spikes, spike_train.num_spikes), mod(
-        lags[argmax], periodic_spike_train.period, -periodic_spike_train.period / 2
-    )
-
-
-# Compute the correlation between a (periodic) multichannel spike train and a multichannel spike train.
-def multi_channel_correlation(
-    multi_channel_periodic_spike_train: MultiChannelPeriodicSpikeTrain,
-    multi_channel_spike_train: MultiChannelSpikeTrain,
-    eps: float = 1.0,
+def single_channel_correlation(
+    ref_firing_times: np.ndarray, firing_times: np.ndarray, period: float, absolute_refractory:float, eps: float
 ):
     """
     Args:
-        multi_channel_periodic_spike_train (MultiChannelPeriodicSpikeTrain): The multi-channel periodic spike train.
-        multi_channel_spike_train (MultiChannelSpikeTrain): The multi-channel spike train.
+        ref_firing_times (np.ndarray): The reference single-channel periodic spike train.
+        firing_times (np.ndarray): The single-channel spike train.
+        period (float): The period of the spike trains in [ms].
+        absolute_refractory (float): The absolute refractory time in [ms].
         eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
 
     Raises:
@@ -112,53 +22,109 @@ def multi_channel_correlation(
         ValueError: If periodic_spike_trains and spike_trains do not have the same number of channels.
 
     Returns:
-        (float): The maximal correlation between the two spike trains.
-        (float): The lag at which the correlation is maximal.
+        (float): The precision of the single-channel spike trains w.r.t the reference.
+        (float): The recall of the single-channel spike trains w.r.t the reference.
+        (float): The lag of the single-channel spike trains w.r.t the reference.
     """
+    if eps <= 0 or eps > absolute_refractory/2:
+        raise ValueError("The half-width of the triangular kernel must be positive and smaller than the absolute refractory period.")
 
-    # TODO: implement this function
+    # Worst precision for empty reference spike train
+    if firing_times.size and not ref_firing_times.size:
+        return 0.0, np.nan, np.nan
+    
+    # Worst recall for empty spike train
+    if not firing_times.size and ref_firing_times.size:
+        return np.nan, 0.0, np.nan
 
-    # Define the triangular kernel
-    kernel = lambda x_: (np.abs(x_) < eps) * (eps - np.abs(x_)) / eps
+    # Perfect precision and recall for empty spike trains
+    if not firing_times.size and not ref_firing_times.size:
+        return 1.0, 1.0, 0.0
 
+    kernel = lambda t_: (np.abs(t_) < eps) * (eps - np.abs(t_)) / eps
+
+    lags = (ref_firing_times[None, :] - firing_times[:, None]).reshape(-1)
+    corr = kernel(dist_mod(lags[None, :], lags[:, None], period)).sum(axis=0)
+    argmax = np.argmax(corr)
+
+    precision = corr[argmax] / firing_times.size
+    recall = corr[argmax] / ref_firing_times.size
+    lag = mod(lags[argmax], period, -period / 2)
+
+    return precision, recall, lag
+
+def multi_channel_correlation(
+    ref_firing_times: List[np.ndarray], firing_times: List[np.ndarray], period: float, absolute_refractory:float, eps: float
+):
+    """
+    Args:
+        ref_firing_times (List[np.ndarray]): The reference multi-channel periodic spike train.
+        firing_times (List[np.ndarray]): The multi-channel spike train.
+        period (float): The period of the spike trains in [ms].
+        absolute_refractory (float): The absolute refractory time in [ms].
+        eps (float, optional): The half-width of the triangular kernel in [ms]. Defaults to 1.0.
+
+    Raises:
+        TypeError: If periodic_spike_trains is not a list of PeriodicSpikeTrain.
+        TypeError: If spike_trains is not a list of SpikeTrain.
+        ValueError: If periodic_spike_trains and spike_trains do not have the same number of channels.
+
+    Returns:
+        (float): The precision of the multi-channel spike trains w.r.t the reference.
+        (float): The recall of the multi-channel spike trains w.r.t the reference.
+        (float): The lag of the multi-channel spike trains w.r.t the reference.
+    """
     # Check the number of channels
-    if multi_channel_periodic_spike_train.num_channels != multi_channel_spike_train.num_channels:
+    if len(firing_times) != len(ref_firing_times):
         raise ValueError("Number of channel does not match.")
+    
+    if eps <= 0 or eps > absolute_refractory/2:
+        raise ValueError("The half-width of the triangular kernel must be positive and smaller than the absolute refractory period.")
 
-    if multi_channel_periodic_spike_train.num_spikes == 0:
-        if multi_channel_spike_train.num_spikes == 0:
-            return 1.0, 0.0
-        return 0.0, np.nan
+    num_firing_times = np.sum([fts.size for fts in firing_times])
+    num_ref_firing_times = np.sum([rfts.size for rfts in ref_firing_times])
 
-    if multi_channel_spike_train.num_spikes == 0:
-        return 0.0, np.nan
+    # Worst precision for empty reference spike train
+    if num_firing_times and not num_ref_firing_times:
+        return 0.0, np.nan, np.nan
+
+    # Worst recall for empty spike train
+    if not num_firing_times and num_ref_firing_times:
+        return np.nan, 0.0, np.nan
+        # return 0.0, 0.0,  np.nan
+
+    # Perfect precision and recall for empty spike trains
+    if not num_firing_times and not num_ref_firing_times:
+        return 1.0, 1.0, 0.0
 
     # Compute all possible correlation maximizers
+    kernel = lambda t_: (np.abs(t_) < eps) * (eps - np.abs(t_)) / eps
+    
     lags = np.concatenate(
         [
-            (periodic_spike_train.firing_times[None, :] - spike_train.firing_times[:, None]).flatten()
-            for periodic_spike_train, spike_train in zip(multi_channel_periodic_spike_train.spike_trains, multi_channel_spike_train.spike_trains)
+            (rfts[None, :] - fts[:, None]).flatten()
+            for fts, rfts in zip(
+                firing_times, ref_firing_times
+            )
         ]
     )
 
-    # Compute correlation for each channel
     corr = np.zeros(lags.size)
-    for periodic_spike_train, spike_train in zip(multi_channel_periodic_spike_train.spike_trains, multi_channel_spike_train.spike_trains):
-        if periodic_spike_train.num_spikes == 0:
-            if spike_train.num_spikes == 0:
-                corr += 1.0 # contribute to every lag
+
+    for rfts, fts in zip(
+        ref_firing_times, firing_times
+    ):
+        if not rfts.size and not fts.size:
+            corr += 1.0  # contribute to every lag
             continue
 
-        if spike_train.num_spikes == 0:
-            continue
-
-        tmp = (spike_train.firing_times[None, :] - periodic_spike_train.firing_times[:, None]).flatten()
-        corr += kernel(
-            mod(lags[None, :] - tmp[:, None], multi_channel_periodic_spike_train.period, multi_channel_periodic_spike_train.period / 2)
-        ).sum(axis=0) / max(periodic_spike_train.num_spikes, spike_train.num_spikes)
+        corr += kernel(dist_mod(lags[None, :], (fts[None, :] - rfts[:, None]).reshape(-1, 1), period)).sum(axis=0)
 
     # Find the maximum correlation and its lag
     argmax = np.argmax(corr)
-    return corr[argmax] / multi_channel_periodic_spike_train.num_channels, mod(
-        lags[argmax], multi_channel_periodic_spike_train.period, multi_channel_periodic_spike_train.period / 2
-    )
+
+    precision = corr[argmax] / num_firing_times
+    recall = corr[argmax] / num_ref_firing_times
+    lag = mod(lags[argmax], period, -period / 2)
+
+    return precision, recall, lag

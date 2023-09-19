@@ -1,40 +1,38 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import numpy as np
 from tqdm.autonotebook import trange
 
-from ..utils.utils import norm
-from .distribution import LinearDistribution, SurvivalDistribution
-from .periodic_spike_train import MultiChannelPeriodicSpikeTrain, PeriodicSpikeTrain
-from .spike_train import MultiChannelSpikeTrain, SpikeTrain
+from ..utils.math import norm
+from .distribution import SurvivalDistribution
 
 
 class SpikeTrainGenerator:
-    def __init__(self, firing_rate: float, abs_refractory_time: float, rel_refractory_time: float):
+    def __init__(self, firing_rate: float, absolute_refractory: float, relative_refractory: float):
         """
         Initialize the spike train generator.
         Setup the survival distribution.
 
         Args:
             firing_rate (float): The firing rate in [kHz].
-            abs_refractory_time (float): The absolute refractory time in [ms].
-            rel_refractory_time (float): The relative refractory time in [ms].
+            absolute_refractory (float): The absolute refractory time in [ms].
+            relative_refractory (float): The relative refractory time in [ms].
         """
-        self.survival_dist = SurvivalDistribution(firing_rate, abs_refractory_time, rel_refractory_time)
+        self.survival_dist = SurvivalDistribution(firing_rate, absolute_refractory, relative_refractory)
 
-    def rand(self, duration: float, num_channels: Optional[int] = None) -> Union[SpikeTrain, MultiChannelSpikeTrain]:
+    def rand(self, duration: float, num_channels: Optional[int] = None) -> Union[np.ndarray, List[np.ndarray]]:
         """
-        Returns a SpikeTrain or a MultiChannelSpikeTrain of duration `duration` [ms].
+        Returns a single- or multi-channel spike train with duration `duration`.
 
         Args:
-            duration (float): The duration.
-            num_channels (int, optional): The number of channels / neurons. If None, returns a `SpikeTrain`, otherwise a `MultiChannelSpikeTrain`. Defaults to None.
+            duration (float): The duration in [ms].
+            num_channels (int, optional): The number of channels / neurons. If None, returns a single-channel spike train, otherwise a multi-channel spike train. Defaults to None.
 
         Raises:
             ValueError: If the duration is not positive.
 
         Returns:
-            (SpikeTrain or MultiChannelSpikeTrain): a spike train or a multi-channel spike train.
+            (np.ndarray or List[np.ndarray]): a spike train or a multi-channel spike train.
         """
         if duration <= 0:
             raise ValueError("The duration must be positive.")
@@ -48,7 +46,7 @@ class SpikeTrainGenerator:
             while s[-1] < duration:
                 s = np.append(s, s[-1] + self.survival_dist.rvs(1))
             firing_times = s[(s >= 0) & (s < duration)]
-            return SpikeTrain(firing_times)
+            return firing_times
 
         # Multi-channel spike train
         firing_times = []
@@ -60,36 +58,40 @@ class SpikeTrainGenerator:
             while s[-1] < duration:
                 s = np.append(s, s[-1] + self.survival_dist.rvs(1))
             firing_times.append(s[(s >= 0) & (s < duration)])
-        return MultiChannelSpikeTrain(num_channels, firing_times)
+        return firing_times
 
 
 class PeriodicSpikeTrainGenerator:
-    def __init__(self, firing_rate: float, abs_refractory_time: float, rel_refractory_time: float):
+    def __init__(self, firing_rate: float, absolute_refractory: float, relative_refractory: float):
         """
         Initialize the spike train generator.
         Setup the survival distribution and the linear distribution for the approximation.
 
         Args:
             firing_rate (float): The firing rate in [kHz].
-            abs_refractory_time (float): The absolute refractory time in [ms].
-            rel_refractory_time (float): The relative refractory time in [ms].
+            absolute_refractory (float): The absolute refractory time in [ms].
+            relative_refractory (float): The relative refractory time in [ms].
         """
-        self.survival_dist = SurvivalDistribution(firing_rate, abs_refractory_time, rel_refractory_time)
-        self.linear_dist = LinearDistribution()
+        self.firing_rate = firing_rate
+        self.absolute_refractory = absolute_refractory
+        self.relative_refractory = relative_refractory
 
-    def rand(self, period, num_channels=None):
+        self.survival_dist = SurvivalDistribution(firing_rate, absolute_refractory, relative_refractory)
+        # self.linear_dist = LinearDistribution()
+
+    def rand(self, period, num_channels=None) -> Union[np.ndarray, List[np.ndarray]]:
         """
-        Returns a PeriodicSpikeTrain or a MultiChannelPeriodicSpikeTrain of period `period` [ms].
+        Returns a single- or multi-channel periodic spike train with period `period`.
 
         Args:
-            period (float): The period.
-            num_channels (int, optional): The number of channels / neurons. If None, returns a `PeriodicSpikeTrain`, otherwise a `MultiChannelPeriodicSpikeTrain`. Defaults to None.
+            period (float): The period in [ms].
+            num_channels (int, optional): The number of channels / neurons. If None, returns a single-channel spike train, otherwise a multi-channel spike train. Defaults to None.
 
         Raises:
             ValueError: If the period is not positive.
 
         Returns:
-            (PeriodicSpikeTrain or MultiChannelPeriodicSpikeTrain): a spike train or a multi-channel spike train.
+            (np.ndarray or List[np.ndarray]): a single- or multi-channel periodic spike train.
         """
         if period <= 0:
             raise ValueError("The period must be positive.")
@@ -98,7 +100,7 @@ class PeriodicSpikeTrainGenerator:
         nmax = int(period / self.survival_dist.ppf(1e-9))
 
         # Approximate the step size for linear approximation of the pdfs
-        step = self.survival_dist.ppf(0.5) / 100
+        step = self.survival_dist.ppf(0.5) / 1000
 
         # Create the time vector, should be even for the FFT-based convolution
         # Note: The maximum time is set to 5 standard deviations above the mean, using CLT for the sum of nmax iid random variables
@@ -134,7 +136,7 @@ class PeriodicSpikeTrainGenerator:
             n = np.random.choice(pn.size, p=pn)
 
             if n == 0:
-                return PeriodicSpikeTrain(period)
+                return np.array([])
 
             # Sample the firing times by backward sampling
             # Note: 0 and period are assumed to be a (unique) firing time
@@ -142,20 +144,11 @@ class PeriodicSpikeTrainGenerator:
             for m in range(n - 2, -1, -1):
                 # Note: The first and last elements of psm are always zero
                 psm = norm(fmus[m] * self.survival_dist.pdf(s[m + 1] - z))
-
-                # Sample the discrete bin containing the current firing time
-                bin = np.random.choice(psm.size, p=psm)
-
-                # Sample in the continuous interval using linear interpolation
-                # Note: The resolution is good enough to neglect higher order terms
-                self.linear_dist.a = z[bin - 1]
-                self.linear_dist.b = z[bin + 1]
-                self.linear_dist.slope = (psm[bin + 1] - psm[bin - 1]) / (2 * step)
-                s[m] = self.linear_dist.rvs()
+                s[m] = np.random.choice(z, p=psm)
 
             # Ramdomly shift the firing times cyclically
             firing_times = np.sort((s + np.random.uniform(0, period)) % period)
-            return PeriodicSpikeTrain(period, firing_times)
+            return firing_times
 
         # Multi-channel spike train
         firing_times = []
@@ -175,18 +168,9 @@ class PeriodicSpikeTrainGenerator:
             for m in range(n - 2, -1, -1):
                 # Note: The first and last elements of psm are always zero
                 psm = norm(fmus[m] * self.survival_dist.pdf(s[m + 1] - z))
-
-                # Sample the discrete bin containing the current firing time
-                bin = np.random.choice(psm.size, p=psm)
-
-                # Sample in the continuous interval using linear interpolation
-                # Note: The resolution is good enough to neglect higher order terms
-                self.linear_dist.a = z[bin - 1]
-                self.linear_dist.b = z[bin + 1]
-                self.linear_dist.slope = (psm[bin + 1] - psm[bin - 1]) / (2 * step)
-                s[m] = self.linear_dist.rvs()
-
+                s[m] = np.random.choice(z, p=psm)
+            
             # Ramdomly shift the firing times cyclically
             firing_times.append(np.sort((s + np.random.uniform(0, period)) % period))
 
-        return MultiChannelPeriodicSpikeTrain(period, num_channels, firing_times)
+        return firing_times
