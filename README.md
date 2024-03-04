@@ -1,10 +1,21 @@
-# Towards Associative Recall in a Recurrent Network of Spiking Neurons :bulb:
+# Towards Associative Recall in a Recurrent Network of Spiking Neurons
 
-## Spiking Neural Network :boom:
+*"Et tout d'un coup le souvenir m'est apparu."* - Marcel Proust, *Du côté de chez Swan*
 
-## Precise and Robust Timing :clock9:
+## :boom: Spiking Neural Network
 
-## Associative Recall :link:
+We consider a network of $L$ spiking neurons, each neuron receives $K$ input signals from the other neurons.
+The $\ell$-th neuron has potential
+$$
+    z_{\ell}(t) = \sum_{k=1}^K w_{\ell,k} y_{\ell, k} (t)
+$$
+with $y_{\ell, k} (t) \triangleq (h_{\ell, k} * x_{i_{\ell, k}})(t)$, and, a spike is produced whenever this potential is above some firing threshold $\theta(t) > 0$.
+
+## :clock9: Precise and Robust Timing
+
+## :link: Associative Recall
+
+
 
 ## Reference
 
