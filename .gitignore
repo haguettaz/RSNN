@@ -136,3 +136,13 @@ dmypy.json
 
 # MAC OS
 .DS_Store
+
+# Data
+*/data/
+*.pkl 
+*.pdf
+*.sh
+*.csv
+
+# Archive
+*/archive/
