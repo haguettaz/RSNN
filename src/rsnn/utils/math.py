@@ -77,7 +77,9 @@ def dist_mod(x:np.ndarray, y:np.ndarray, modulo:float):
     Returns:
         (np.ndarray): The componentwise distance modulo the given modulo.
     """
-    return np.minimum(np.abs(x - y), modulo - np.abs(x - y))
+    z  = np.abs(x - y)
+    # print(z.shape)
+    return np.minimum(z, modulo - z)
 
 
 # def cyclic_neighborhood(x:np.ndarray, period:float, eps_left:float, eps_right:float, step:float=1.0, complement:bool=False):
