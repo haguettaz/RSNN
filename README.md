@@ -1,6 +1,6 @@
 # Towards Associative Recall in a Recurrent Network of Spiking Neurons
 
-*"Et tout d'un coup le souvenir m'est apparu."* - Marcel Proust, *Du côté de chez Swan*
+*"Et tout d'un coup le souvenir m'est apparu."* - Marcel Proust, *Du côté de chez Swann*
 
 ## :boom: Spiking Neural Network
 
