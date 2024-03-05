@@ -1,10 +1,9 @@
 import argparse
 import os
-from random import choices
 
 import numpy as np
 import pandas as pd
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 from rsnn.network.network import Network
 from rsnn.neuron.neuron import Neuron
@@ -96,8 +95,8 @@ if __name__ == "__main__":
             if neuron.status != "optimal":
                 raise ValueError(f"Problem infeasible for neuron {neuron.idx}!")
 
-    save_object_to_file(network, os.path.join(exp_dir, "network.pkl"))
-    print(f"Network saved at", os.path.join(exp_dir, "network.pkl"), flush=True)
+        save_object_to_file(network, os.path.join(exp_dir, "network.pkl"))
+        print(f"Network saved at", os.path.join(exp_dir, "network.pkl"), flush=True)
 
     # Analytical temporal stability
     mod_phis = np.sort(np.abs(get_phis(network.neurons, spike_trains, PERIOD)))

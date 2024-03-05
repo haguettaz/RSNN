@@ -8,7 +8,7 @@ from tqdm import tqdm, trange
 
 from rsnn.network.network import Network
 from rsnn.neuron.neuron import Neuron
-from rsnn.spike_train.measure import multi_channel_correlation
+from rsnn.spike_train.measure import multi_channel_correlation, single_channel_correlation
 from rsnn.spike_train.sampler import forward_sampling
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
@@ -29,35 +29,38 @@ if __name__ == "__main__":
     parser.add_argument("--weight_bound", type=int, default=20)  # in %
     parser.add_argument("--l1", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--l2", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--init", type=str, default="random")
+    parser.add_argument("--init", type=str, default="random")  # in {"silent", "random", "memory"}
     parser.add_argument("--num_ctrl_neurons", type=int, default=50)
-    parser.add_argument("--std_ctrl", type=int, default=20)  # in % of tau_min
+    parser.add_argument("--std_ctrl", type=int, default=10)  # in % of tau_min
 
     args = parser.parse_args()
 
     print(args)
-
-    # if not args.similarity in {"low", "high"}:
-    #     raise ValueError("similarity should be one of low or high")
 
     if args.l1:
         weight_regularization = "l1"
         net_dir = os.path.join(
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1", f"exp_{args.exp_idx}"
         )
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_l1", f"exp_{args.exp_idx}")
+        exp_dir = os.path.join(
+            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l1", f"exp_{args.exp_idx}"
+        )
     elif args.l2:
         weight_regularization = "l2"
         net_dir = os.path.join(
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2", f"exp_{args.exp_idx}"
         )
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_l2", f"exp_{args.exp_idx}")
+        exp_dir = os.path.join(
+            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l2", f"exp_{args.exp_idx}"
+        )
     else:
         weight_regularization = None
         net_dir = os.path.join(
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}", f"exp_{args.exp_idx}"
         )
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}", f"exp_{args.exp_idx}")
+        exp_dir = os.path.join(
+            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}", f"exp_{args.exp_idx}"
+        )
 
     if os.path.exists(os.path.join(exp_dir, "results.csv")):
         print(f"Experiment already exists at", os.path.join(exp_dir, "results.csv"), flush=True)
@@ -108,8 +111,8 @@ if __name__ == "__main__":
             if neuron.status != "optimal":
                 raise ValueError(f"Problem infeasible for neuron {neuron.idx}!")
 
-    save_object_to_file(network, os.path.join(net_dir, "network.pkl"))
-    print(f"Network saved at", os.path.join(net_dir, "network.pkl"), flush=True)
+        save_object_to_file(network, os.path.join(net_dir, "network.pkl"))
+        print(f"Network saved at", os.path.join(net_dir, "network.pkl"), flush=True)
 
     # Analytical temporal stability
     mod_phis = np.sort(np.abs(get_phis(network.neurons, spike_trains, PERIOD)))
@@ -118,21 +121,28 @@ if __name__ == "__main__":
     # print(f"Network saved at", os.path.join(net_dir, f"network.pkl"), flush=True)
 
     # Empirical associative recall
-    list_of_dict = []
+    list_of_neuron_dict = []
+    list_of_network_dict = []
+
     for std_threshold in tqdm([0.025, 0.05, 0.1]):
 
         if args.init == "silent":
             init_spike_trains = [np.array([])] * args.num_neurons
         elif args.init == "random":
-            init_spike_trains = forward_sampling(PERIOD, FIRING_RATE, args.num_neurons) - PERIOD
+            init_spike_trains = forward_sampling(PERIOD, FIRING_RATE, args.num_neurons)
+        elif args.init == "memory":
+            init_spike_trains = spike_trains
 
         for neuron in network.neurons:
             # set controllable neurons
             if neuron.idx >= args.num_neurons - args.num_ctrl_neurons:
-                neuron.firing_times = np.concatenate([init_spike_trains[neuron.idx], np.random.normal(spike_trains[neuron.idx][None,:] + PERIOD * np.arange(8)[:,None], args.std_ctrl).flatten()])
+                neuron.firing_times = np.concatenate(
+                    [init_spike_trains[neuron.idx] - PERIOD, np.random.normal(spike_trains[neuron.idx][None, :] + PERIOD * np.arange(8)[:, None], args.std_ctrl / 100).flatten()]
+                )
             # set uncontrollable neurons
             else:
-                neuron.firing_times = init_spike_trains[neuron.idx]
+                neuron.firing_times = init_spike_trains[neuron.idx] - PERIOD
+                neuron.firing_threshold = None
 
         for i in range(8):
             network.sim(i * PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons - args.num_ctrl_neurons))
@@ -143,10 +153,19 @@ if __name__ == "__main__":
                 i * PERIOD,
                 PERIOD,
             )
-            print(std_threshold, i, precision, recall)
-            list_of_dict.append(
+            print(std_threshold, i, precision, recall, flush=True)
+            list_of_network_dict.append(
                 {
                     "exp_idx": args.exp_idx,
+                    "num_inputs": args.num_inputs,
+                    "num_neurons": args.num_neurons,
+                    "delay_max": args.delay_max,
+                    "slope_min": args.slope_min,
+                    "weight_bound": args.weight_bound / 100,
+                    "weight_regularization": weight_regularization,
+                    "init": args.init,
+                    "num_ctrl_neurons": args.num_ctrl_neurons,
+                    "std_ctrl": args.std_ctrl / 100,
                     "std_threshold": std_threshold,
                     "cycle": i,
                     "precision": precision,
@@ -156,6 +175,36 @@ if __name__ == "__main__":
                 }
             )
 
-    df = pd.DataFrame(list_of_dict)
-    df.to_csv(os.path.join(exp_dir, "results.csv"), index=False)
-    print(f"Experiment saved at", os.path.join(exp_dir, "results.csv"), flush=True)
+            for neuron in network.neurons:
+                precision, recall = single_channel_correlation(
+                    spike_trains[neuron.idx],
+                    neuron.firing_times,
+                    i * PERIOD,
+                    PERIOD,
+                )
+                list_of_neuron_dict.append(
+                    {
+                        "exp_idx": args.exp_idx,
+                        "num_inputs": args.num_inputs,
+                        "num_neurons": args.num_neurons,
+                        "delay_max": args.delay_max,
+                        "slope_min": args.slope_min,
+                        "weight_bound": args.weight_bound / 100,
+                        "weight_regularization": weight_regularization,
+                        "init": args.init,
+                        "num_ctrl_neurons": args.num_ctrl_neurons,
+                        "std_ctrl": args.std_ctrl / 100,
+                        "std_threshold": std_threshold,
+                        "std_threshold": std_threshold,
+                        "cycle": i,
+                        "precision": precision,
+                        "recall": recall,
+                        "neuron_idx": neuron.idx,
+                        "neuron_type": "ctrl" if neuron.idx >= args.num_neurons - args.num_ctrl_neurons else "non-ctrl",
+                    }
+                )
+
+    pd.DataFrame(list_of_network_dict).to_csv(os.path.join(exp_dir, "network_results.csv"), index=False)
+    print(f"Experiment saved at", os.path.join(exp_dir, "network_results.csv"), flush=True)
+    pd.DataFrame(list_of_neuron_dict).to_csv(os.path.join(exp_dir, "neuron_results.csv"), index=False)
+    print(f"Experiment saved at", os.path.join(exp_dir, "neuron_results.csv"), flush=True)

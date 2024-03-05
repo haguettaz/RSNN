@@ -2,7 +2,7 @@
 
 *"Et tout d'un coup le souvenir m'est apparu."* - Marcel Proust, *Du côté de chez Swann*
 
-## :boom: Spiking Neural Network
+### :boom: Spiking Neural Network
 
 We consider a network of $L$ spiking neurons, each neuron receives $K$ input signals from the other neurons.
 The $\ell$-th neuron has potential
@@ -13,11 +13,20 @@ $$
 
 with $y_{\ell, k} (t) \triangleq (h_{\ell, k} * x_{i_{\ell, k}})(t)$, and, a spike is produced whenever this potential is above some firing threshold $\theta(t) > 0$.
 
-## :clock9: Precise and Robust Timing
+### :clock9: Precise and Robust Timing
 
-## :link: Associative Recall
+### :link: Associative Recall
 
+## Installation
 
+## Notebooks
 
-## Reference
+- spike trains
+- neural network
+- optimization
+- simulation
+
+## Scripts
+
+## References
 

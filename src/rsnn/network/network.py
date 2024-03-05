@@ -71,9 +71,6 @@ class Network:
             #     raise ValueError(f"The effect of the {nmax}th latest spike is not negligible ({tmp}>{tol}).")
             
         tmax = t0 + duration
-        print("t0:",t0)
-        print("tmax:",tmax)
-        print("num sim neurons:", len(sim_neurons))
         
         for neuron in sim_neurons:
             nmax = 0
