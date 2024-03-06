@@ -26,45 +26,36 @@ def single_channel_correlation(ref_firing_times: np.ndarray, firing_times: np.nd
     if eps <= 0 or eps > 0.5:
         raise ValueError("The half-width of the triangular kernel must be positive and smaller than the absolute refractory period.")
 
-    # make sure no firing times is too close to the edges of the window
-    tmin = firing_times[np.searchsorted(firing_times, t0, side="right") - 1]  # np.searchsorted(firing_times, t0, side="right") - 1
-    tmax = firing_times[np.searchsorted(firing_times, t0 + period, side="right") - 1]  #
-    if (tmin - t0) < 0.5:
-        tmin -= 0.5
-        tmax = tmin + period
-    elif (tmax - (t0 + period)) < 0.5:
-        tmax += 0.5
-        tmin = tmax - period
-    else:
-        tmin = t0
-        tmax = tmin + period
-    firing_times = firing_times[(firing_times >= tmin) & (firing_times < tmax)] % period
+    tmp_firing_times = firing_times[(firing_times >= t0 - 1) & (firing_times < t0 + period)] % period
+    # if the first and last firing times are too close, i.e., they periodically overlap violating the refractory period, remove the last one
+    if tmp_firing_times.size > 1 and abs(tmp_firing_times[-1] - tmp_firing_times[0]) < 1.0:
+        tmp_firing_times = tmp_firing_times[1:]
 
     # Bad precision and good recall for empty reference spike train
-    if firing_times.size and not ref_firing_times.size:
+    if tmp_firing_times.size > 0 and ref_firing_times.size == 0:
         if return_min:
             return 0.0
         return 0.0, 1.0
 
     # Bad recall and good precision for empty spike train
-    if not firing_times.size and ref_firing_times.size:
+    if tmp_firing_times.size == 0 and ref_firing_times.size > 0:
         if return_min:
             return 0.0
         return 1.0, 0.0
 
     # Perfect precision and recall for empty spike trains
-    if not firing_times.size and not ref_firing_times.size:
+    if tmp_firing_times.size == 0 and ref_firing_times.size == 0:
         if return_min:
             return 1.0
         return 1.0, 1.0
 
     kernel = lambda t_: (np.abs(t_) < eps) * (eps - np.abs(t_)) / eps
 
-    lags = (firing_times[None, :] - ref_firing_times[:, None]).flatten()
-    corr = kernel(dist_mod(firing_times[None, :, None] - lags[None, None, :], ref_firing_times[:, None, None], period)).sum(axis=(0, 1))
+    lags = (tmp_firing_times[None, :] - ref_firing_times[:, None]).flatten()
+    corr = kernel(dist_mod(tmp_firing_times[None, :, None] - lags[None, None, :], ref_firing_times[:, None, None], period)).sum(axis=(0, 1))
 
     argmax = np.argmax(corr)
-    precision = corr[argmax] / firing_times.size
+    precision = corr[argmax] / tmp_firing_times.size
     recall = corr[argmax] / ref_firing_times.size
 
     if return_min:
@@ -99,63 +90,61 @@ def multi_channel_correlation(
 
     if eps <= 0 or eps > 0.5:
         raise ValueError("The half-width of the triangular kernel must be positive and smaller than the absolute refractory period.")
-
-    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in firing_times) == 0:
-        if return_min:
-            return 1.0
-        return 1.0, 1.0
-    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in firing_times) > 0:
-        if return_min:
-            return 0.0
-        return 0.0, 1.0
-    if sum(fts.size for fts in ref_firing_times) > 0 and sum(fts.size for fts in firing_times) == 0:
-        if return_min:
-            return 0.0
-        return 1.0, 0.0
     
     # Compute all possible correlation maximizers
     kernel = lambda t_: (np.abs(t_) < eps) * (eps - np.abs(t_)) / eps
 
+    # A BIT SLOPPY... NEEDS TO BE CLEANED
     lags = []
+    tmp_firing_times = []
     for c in range(num_channels):
-        # make sure no firing times is too close to the edges of the window
-        tmin = firing_times[c][np.searchsorted(firing_times[c], t0, side="right") - 1]  # np.searchsorted(firing_times, t0, side="right") - 1
-        tmax = firing_times[c][np.searchsorted(firing_times[c], t0 + period, side="right") - 1]  #
-        if (tmin - t0) < 0.5:
-            tmin -= 0.5
-            tmax = tmin + period
-        elif (tmax - (t0 + period)) < 0.5:
-            tmax += 0.5
-            tmin = tmax - period
-        else:
-            tmin = t0
-            tmax = tmin + period
-        firing_times[c] = firing_times[c][(firing_times[c] >= tmin) & (firing_times[c] < tmax)] % period
-        lags.append((firing_times[c][None, :] - ref_firing_times[c][:, None]).flatten())
+        # add some tolerance at the right edge of the window
+        fts = firing_times[c][(firing_times[c] >= t0 - 1) & (firing_times[c] < t0 + period)] % period
+        # if the first and last firing times are too close, i.e., they periodically overlap violating the refractory period, remove the last one
+        if fts.size > 1 and abs(fts[-1] - fts[0]) < 1.0:
+            fts = fts[1:]
+
+        tmp_firing_times.append(fts)
+        # firing_times[c] = firing_times[c][(firing_times[c] >= tmin) & (firing_times[c] < tmax)] % period
+        print("firing_times:", tmp_firing_times[-1], "\n")
+        lags.append((tmp_firing_times[-1][None, :] - ref_firing_times[c][:, None]).flatten())
     lags = np.concatenate(lags)
+
+    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in tmp_firing_times) == 0:
+        if return_min:
+            return 1.0
+        return 1.0, 1.0
+    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in tmp_firing_times) > 0:
+        if return_min:
+            return 0.0
+        return 0.0, 1.0
+    if sum(fts.size for fts in ref_firing_times) > 0 and sum(fts.size for fts in tmp_firing_times) == 0:
+        if return_min:
+            return 0.0
+        return 1.0, 0.0
 
     precision = np.zeros_like(lags)
     recall = np.zeros_like(lags)
 
     for c in range(num_channels):
         # Both are empty
-        if ref_firing_times[c].size == 0 and firing_times[c].size == 0:
+        if ref_firing_times[c].size == 0 and tmp_firing_times[c].size == 0:
             precision += 1.0  # contribute to every lag
             recall += 1.0  # contribute to every lag
             continue
 
         # Bad precision
-        if ref_firing_times[c].size == 0 and firing_times[c].size > 0:
+        if ref_firing_times[c].size == 0 and tmp_firing_times[c].size > 0:
             recall += 1.0
             continue
 
         # Bad recall
-        if ref_firing_times[c].size > 0 and firing_times[c] == 0:
+        if ref_firing_times[c].size > 0 and tmp_firing_times[c].size == 0:
             precision += 1.0
             continue
 
-        corr = kernel(dist_mod(firing_times[c][None, :, None] - lags[None, None, :], ref_firing_times[c][:, None, None], period)).sum(axis=(0, 1))
-        precision += corr / firing_times[c].size
+        corr = kernel(dist_mod(tmp_firing_times[c][None, :, None] - lags[None, None, :], ref_firing_times[c][:, None, None], period)).sum(axis=(0, 1))
+        precision += corr / tmp_firing_times[c].size
         recall += corr / ref_firing_times[c].size
 
     if return_min:
