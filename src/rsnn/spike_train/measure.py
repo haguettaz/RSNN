@@ -100,6 +100,19 @@ def multi_channel_correlation(
     if eps <= 0 or eps > 0.5:
         raise ValueError("The half-width of the triangular kernel must be positive and smaller than the absolute refractory period.")
 
+    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in firing_times) == 0:
+        if return_min:
+            return 1.0
+        return 1.0, 1.0
+    if sum(fts.size for fts in ref_firing_times) == 0 and sum(fts.size for fts in firing_times) > 0:
+        if return_min:
+            return 0.0
+        return 0.0, 1.0
+    if sum(fts.size for fts in ref_firing_times) > 0 and sum(fts.size for fts in firing_times) == 0:
+        if return_min:
+            return 0.0
+        return 1.0, 0.0
+    
     # Compute all possible correlation maximizers
     kernel = lambda t_: (np.abs(t_) < eps) * (eps - np.abs(t_)) / eps
 
@@ -126,18 +139,18 @@ def multi_channel_correlation(
 
     for c in range(num_channels):
         # Both are empty
-        if not ref_firing_times[c].size and not firing_times[c].size:
+        if ref_firing_times[c].size == 0 and firing_times[c].size == 0:
             precision += 1.0  # contribute to every lag
             recall += 1.0  # contribute to every lag
             continue
 
         # Bad precision
-        if not ref_firing_times[c].size and firing_times[c].size:
+        if ref_firing_times[c].size == 0 and firing_times[c].size > 0:
             recall += 1.0
             continue
 
         # Bad recall
-        if ref_firing_times[c].size and not firing_times[c].size:
+        if ref_firing_times[c].size > 0 and firing_times[c] == 0:
             precision += 1.0
             continue
 

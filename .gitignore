@@ -139,6 +139,7 @@ dmypy.json
 
 # Data
 scripts/*/data/
+scripts/*/archive_data/
 *.pkl 
 *.pdf
 *.sh

@@ -149,4 +149,3 @@ if __name__ == "__main__":
     df = pd.DataFrame(list_of_dict)
     df.to_csv(os.path.join(exp_dir, "results.csv"), index=False)
     print(f"Experiment saved at", os.path.join(exp_dir, "results.csv"), flush=True)
-
