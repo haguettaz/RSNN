@@ -124,8 +124,6 @@ if __name__ == "__main__":
     # list_of_neuron_dict = []
     list_of_dict = []
 
-    std_threshold = 0.1
-
     if args.init == "silent":
         init_spike_trains = [np.array([])] * args.num_neurons
     elif args.init == "random":
@@ -133,98 +131,99 @@ if __name__ == "__main__":
     elif args.init == "memory":
         init_spike_trains = spike_trains
 
-    for neuron in network.neurons:
-        # set controllable neurons
-        if neuron.idx >= args.num_neurons - args.num_ctrl_neurons:
-            neuron.firing_times = np.concatenate(
-                [init_spike_trains[neuron.idx] - PERIOD, np.random.normal(spike_trains[neuron.idx][None, :] + PERIOD * np.arange(8)[:, None], args.std_ctrl / 100).flatten()]
+    for std_threshold in [0.05, 0.1, 0.15]:
+        for neuron in network.neurons:
+            # set controllable neurons
+            if neuron.idx >= args.num_neurons - args.num_ctrl_neurons:
+                neuron.firing_times = np.concatenate(
+                    [init_spike_trains[neuron.idx] - PERIOD, np.random.normal(spike_trains[neuron.idx][None, :] + PERIOD * np.arange(8)[:, None], args.std_ctrl / 100).flatten()]
+                )
+            # set uncontrollable neurons
+            else:
+                neuron.firing_times = init_spike_trains[neuron.idx] - PERIOD
+                neuron.firing_threshold = None
+
+        for i in range(10):
+            network.sim(i * PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons - args.num_ctrl_neurons))
+
+            precision, recall = multi_channel_correlation(
+                [spike_trains[neuron.idx] for neuron in network.neurons],
+                [neuron.firing_times for neuron in network.neurons],
+                i * PERIOD,
+                PERIOD,
             )
-        # set uncontrollable neurons
-        else:
-            neuron.firing_times = init_spike_trains[neuron.idx] - PERIOD
-            neuron.firing_threshold = None
+            print(f"std_threshold: {std_threshold}, cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
+            list_of_dict.append(
+                {
+                    "exp_idx": args.exp_idx,
+                    "num_inputs": args.num_inputs,
+                    "num_neurons": args.num_neurons,
+                    "delay_max": args.delay_max,
+                    "slope_min": args.slope_min,
+                    "weight_bound": args.weight_bound / 100,
+                    "weight_regularization": weight_regularization,
+                    "init": args.init,
+                    "num_ctrl_neurons": args.num_ctrl_neurons,
+                    "std_ctrl": args.std_ctrl / 100,
+                    "std_threshold": std_threshold,
+                    "cycle": i,
+                    "precision": precision,
+                    "recall": recall,
+                    "type":"all"
+                }
+            )
 
-    for i in range(20):
-        network.sim(i * PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons - args.num_ctrl_neurons))
+            precision, recall = multi_channel_correlation(
+                [spike_trains[neuron.idx] for neuron in network.neurons[-args.num_ctrl_neurons:]],
+                [neuron.firing_times for neuron in network.neurons[-args.num_ctrl_neurons:]],
+                i * PERIOD,
+                PERIOD,
+            )
+            list_of_dict.append(
+                {
+                    "exp_idx": args.exp_idx,
+                    "num_inputs": args.num_inputs,
+                    "num_neurons": args.num_neurons,
+                    "delay_max": args.delay_max,
+                    "slope_min": args.slope_min,
+                    "weight_bound": args.weight_bound / 100,
+                    "weight_regularization": weight_regularization,
+                    "init": args.init,
+                    "num_ctrl_neurons": args.num_ctrl_neurons,
+                    "std_ctrl": args.std_ctrl / 100,
+                    "std_threshold": std_threshold,
+                    "cycle": i,
+                    "precision": precision,
+                    "recall": recall,
+                    "type":"ctrl"
+                }
+            )
 
-        precision, recall = multi_channel_correlation(
-            [spike_trains[neuron.idx] for neuron in network.neurons],
-            [neuron.firing_times for neuron in network.neurons],
-            i * PERIOD,
-            PERIOD,
-        )
-        print(std_threshold, i, precision, recall, flush=True)
-        list_of_dict.append(
-            {
-                "exp_idx": args.exp_idx,
-                "num_inputs": args.num_inputs,
-                "num_neurons": args.num_neurons,
-                "delay_max": args.delay_max,
-                "slope_min": args.slope_min,
-                "weight_bound": args.weight_bound / 100,
-                "weight_regularization": weight_regularization,
-                "init": args.init,
-                "num_ctrl_neurons": args.num_ctrl_neurons,
-                "std_ctrl": args.std_ctrl / 100,
-                "std_threshold": std_threshold,
-                "cycle": i,
-                "precision": precision,
-                "recall": recall,
-                "type":"all"
-            }
-        )
-
-        precision, recall = multi_channel_correlation(
-            [spike_trains[neuron.idx] for neuron in network.neurons[-args.num_ctrl_neurons:]],
-            [neuron.firing_times for neuron in network.neurons[-args.num_ctrl_neurons:]],
-            i * PERIOD,
-            PERIOD,
-        )
-        list_of_dict.append(
-            {
-                "exp_idx": args.exp_idx,
-                "num_inputs": args.num_inputs,
-                "num_neurons": args.num_neurons,
-                "delay_max": args.delay_max,
-                "slope_min": args.slope_min,
-                "weight_bound": args.weight_bound / 100,
-                "weight_regularization": weight_regularization,
-                "init": args.init,
-                "num_ctrl_neurons": args.num_ctrl_neurons,
-                "std_ctrl": args.std_ctrl / 100,
-                "std_threshold": std_threshold,
-                "cycle": i,
-                "precision": precision,
-                "recall": recall,
-                "type":"ctrl"
-            }
-        )
-
-        precision, recall = multi_channel_correlation(
-            [spike_trains[neuron.idx] for neuron in network.neurons[:-args.num_ctrl_neurons]],
-            [neuron.firing_times for neuron in network.neurons[:-args.num_ctrl_neurons]],
-            i * PERIOD,
-            PERIOD,
-        )
-        list_of_dict.append(
-            {
-                "exp_idx": args.exp_idx,
-                "num_inputs": args.num_inputs,
-                "num_neurons": args.num_neurons,
-                "delay_max": args.delay_max,
-                "slope_min": args.slope_min,
-                "weight_bound": args.weight_bound / 100,
-                "weight_regularization": weight_regularization,
-                "init": args.init,
-                "num_ctrl_neurons": args.num_ctrl_neurons,
-                "std_ctrl": args.std_ctrl / 100,
-                "std_threshold": std_threshold,
-                "cycle": i,
-                "precision": precision,
-                "recall": recall,
-                "type":"non-ctrl"
-            }
-        )
+            precision, recall = multi_channel_correlation(
+                [spike_trains[neuron.idx] for neuron in network.neurons[:-args.num_ctrl_neurons]],
+                [neuron.firing_times for neuron in network.neurons[:-args.num_ctrl_neurons]],
+                i * PERIOD,
+                PERIOD,
+            )
+            list_of_dict.append(
+                {
+                    "exp_idx": args.exp_idx,
+                    "num_inputs": args.num_inputs,
+                    "num_neurons": args.num_neurons,
+                    "delay_max": args.delay_max,
+                    "slope_min": args.slope_min,
+                    "weight_bound": args.weight_bound / 100,
+                    "weight_regularization": weight_regularization,
+                    "init": args.init,
+                    "num_ctrl_neurons": args.num_ctrl_neurons,
+                    "std_ctrl": args.std_ctrl / 100,
+                    "std_threshold": std_threshold,
+                    "cycle": i,
+                    "precision": precision,
+                    "recall": recall,
+                    "type":"non-ctrl"
+                }
+            )
 
         # for neuron in network.neurons:
         #     precision, recall = single_channel_correlation(

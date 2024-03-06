@@ -128,7 +128,7 @@ def forward_sampling(period:float, firing_rate:float, num_channels:int=1, res:fl
         # firing times? (conditionned on number of spikes and spikes at location 0 and period)
         tfs = np.zeros(n, dtype=float)
         for m in range(1, n):
-            ts = np.arange(tfs[m-1]+1+res, period - (n - m) - res, res)
+            ts = np.arange(tfs[m-1]+1+res, period - (n - m), res)
             pts = np.nan_to_num((n-m)*np.power((period - (n-m) - ts)/(period - (n - m + 1) - tfs[m-1]), n-m-1)/(period - (n - m + 1) - tfs[m-1]))
             pts = pts / pts.sum()
             tfs[m] = np.random.choice(ts, p=pts)

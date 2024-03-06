@@ -105,8 +105,6 @@ def multi_channel_correlation(
             fts = fts[1:]
 
         tmp_firing_times.append(fts)
-        # firing_times[c] = firing_times[c][(firing_times[c] >= tmin) & (firing_times[c] < tmax)] % period
-        print("firing_times:", tmp_firing_times[-1], "\n")
         lags.append((tmp_firing_times[-1][None, :] - ref_firing_times[c][:, None]).flatten())
     lags = np.concatenate(lags)
 

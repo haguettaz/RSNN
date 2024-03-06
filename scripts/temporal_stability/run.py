@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     # Empirical temporal stability
     list_of_dict = []
-    for std_threshold in tqdm([0.025, 0.05, 0.1, 0.2]):
+    for std_threshold in [0.05, 0.1, 0.15]:
         # if os.path.exists(os.path.join(exp_dir, f"network_{std_threshold}.pkl")):
         #     print(f"Experiment already exists at",  os.path.join(exp_dir, f"network_{std_threshold}.pkl"), flush=True)
         #     continue
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         # network.precision = []
         # network.recall = []
 
-        for i in range(8):
+        for i in range(10):
             network.sim(i*PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons))
         
             precision, recall = multi_channel_correlation(
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                             i * PERIOD,
                             PERIOD,
                         )
-            print(std_threshold, i, precision, recall)
+            print(f"std_threshold: {std_threshold}, cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
             list_of_dict.append(
                 {
                     "exp_idx": args.exp_idx,
