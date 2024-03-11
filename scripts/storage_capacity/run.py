@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import trange
 
 from rsnn.neuron.neuron import Neuron
-from rsnn.spike_train.sampler import forward_sampling
+from rsnn.spike_train.sampler import sample_spike_trains
 
 # Remark: tau_min is the minimum distance between two consecutive spikes, i.e., the absolute refractory period.
 
@@ -47,7 +47,7 @@ DELAY_MIN = 0.1  # in tau_min
 
 #     for exp_idx in trange(args.num_exp):
 
-#         spike_trains = forward_sampling(args.period, FIRING_RATE, num_distinct_sources)
+#         spike_trains = sample_spike_trains(args.period, FIRING_RATE, num_distinct_sources)
 
 #         np.random.shuffle(neuron.sources)
 #         neuron.delays = np.random.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs)
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         num_errors = 0
         for exp_idx in trange(args.num_exp):
 
-            spike_trains = forward_sampling(period, FIRING_RATE, num_distinct_sources)
+            spike_trains = sample_spike_trains(period, FIRING_RATE, num_distinct_sources)
 
             np.random.shuffle(neuron.sources)
             neuron.delays = np.random.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs)

@@ -8,7 +8,7 @@ from tqdm import tqdm
 from rsnn.network.network import Network
 from rsnn.neuron.neuron import Neuron
 from rsnn.spike_train.measure import multi_channel_correlation
-from rsnn.spike_train.sampler import forward_sampling
+from rsnn.spike_train.sampler import sample_spike_trains
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         spike_trains = load_object_from_file(os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Loaded spike trains from", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
     else:
-        spike_trains = forward_sampling(PERIOD, FIRING_RATE, args.num_neurons)
+        spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons)
         save_object_to_file(spike_trains, os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Spike trains saved at", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
 

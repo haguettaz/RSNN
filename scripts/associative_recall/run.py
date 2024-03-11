@@ -9,7 +9,7 @@ from tqdm import tqdm, trange
 from rsnn.network.network import Network
 from rsnn.neuron.neuron import Neuron
 from rsnn.spike_train.measure import multi_channel_correlation, single_channel_correlation
-from rsnn.spike_train.sampler import forward_sampling
+from rsnn.spike_train.sampler import sample_spike_trains
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
@@ -43,7 +43,9 @@ if __name__ == "__main__":
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1", f"exp_{args.exp_idx}"
         )
         exp_dir = os.path.join(
-            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l1", f"exp_{args.exp_idx}"
+            "data",
+            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l1",
+            f"exp_{args.exp_idx}",
         )
     elif args.l2:
         weight_regularization = "l2"
@@ -51,7 +53,9 @@ if __name__ == "__main__":
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2", f"exp_{args.exp_idx}"
         )
         exp_dir = os.path.join(
-            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l2", f"exp_{args.exp_idx}"
+            "data",
+            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}_l2",
+            f"exp_{args.exp_idx}",
         )
     else:
         weight_regularization = None
@@ -59,7 +63,9 @@ if __name__ == "__main__":
             "..", "temporal_stability", "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}", f"exp_{args.exp_idx}"
         )
         exp_dir = os.path.join(
-            "data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}", f"exp_{args.exp_idx}"
+            "data",
+            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_{args.num_ctrl_neurons}_{args.std_ctrl}_{args.init}",
+            f"exp_{args.exp_idx}",
         )
 
     if os.path.exists(os.path.join(exp_dir, "results.csv")):
@@ -74,7 +80,7 @@ if __name__ == "__main__":
         spike_trains = load_object_from_file(os.path.join(net_dir, "spike_trains.pkl"))
         print(f"Loaded spike trains from", os.path.join(net_dir, "spike_trains.pkl"), flush=True)
     else:
-        spike_trains = forward_sampling(PERIOD, FIRING_RATE, args.num_neurons)
+        spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons)
         save_object_to_file(spike_trains, os.path.join(net_dir, "spike_trains.pkl"))
         print(f"Spike trains saved at", os.path.join(net_dir, "spike_trains.pkl"), flush=True)
 
@@ -127,7 +133,7 @@ if __name__ == "__main__":
     if args.init == "silent":
         init_spike_trains = [np.array([])] * args.num_neurons
     elif args.init == "random":
-        init_spike_trains = forward_sampling(PERIOD, FIRING_RATE, args.num_neurons)
+        init_spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons)
     elif args.init == "memory":
         init_spike_trains = spike_trains
 
@@ -169,13 +175,13 @@ if __name__ == "__main__":
                     "cycle": i,
                     "precision": precision,
                     "recall": recall,
-                    "type":"all"
+                    "type": "all",
                 }
             )
 
             precision, recall = multi_channel_correlation(
-                [spike_trains[neuron.idx] for neuron in network.neurons[-args.num_ctrl_neurons:]],
-                [neuron.firing_times for neuron in network.neurons[-args.num_ctrl_neurons:]],
+                [spike_trains[neuron.idx] for neuron in network.neurons[-args.num_ctrl_neurons :]],
+                [neuron.firing_times for neuron in network.neurons[-args.num_ctrl_neurons :]],
                 i * PERIOD,
                 PERIOD,
             )
@@ -195,13 +201,13 @@ if __name__ == "__main__":
                     "cycle": i,
                     "precision": precision,
                     "recall": recall,
-                    "type":"ctrl"
+                    "type": "ctrl",
                 }
             )
 
             precision, recall = multi_channel_correlation(
-                [spike_trains[neuron.idx] for neuron in network.neurons[:-args.num_ctrl_neurons]],
-                [neuron.firing_times for neuron in network.neurons[:-args.num_ctrl_neurons]],
+                [spike_trains[neuron.idx] for neuron in network.neurons[: -args.num_ctrl_neurons]],
+                [neuron.firing_times for neuron in network.neurons[: -args.num_ctrl_neurons]],
                 i * PERIOD,
                 PERIOD,
             )
@@ -221,7 +227,7 @@ if __name__ == "__main__":
                     "cycle": i,
                     "precision": precision,
                     "recall": recall,
-                    "type":"non-ctrl"
+                    "type": "non-ctrl",
                 }
             )
 
