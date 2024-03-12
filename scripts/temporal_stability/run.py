@@ -17,6 +17,7 @@ DELAY_MIN = 0.1  # in tau_min
 
 PERIOD = 50 # in tau_min
 FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
+NUM_CYCLES = 10
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
@@ -119,7 +120,7 @@ if __name__ == "__main__":
         # network.precision = []
         # network.recall = []
 
-        for i in range(10):
+        for i in range(NUM_CYCLES): # 10 or 50?
             network.sim(i*PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons))
         
             precision, recall = multi_channel_correlation(

@@ -18,6 +18,7 @@ DELAY_MIN = 0.1  # in tau_min
 
 PERIOD = 50  # in tau_min
 FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
+NUM_CYCLES = 20
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
@@ -142,14 +143,14 @@ if __name__ == "__main__":
             # set controllable neurons
             if neuron.idx >= args.num_neurons - args.num_ctrl_neurons:
                 neuron.firing_times = np.concatenate(
-                    [init_spike_trains[neuron.idx] - PERIOD, np.random.normal(spike_trains[neuron.idx][None, :] + PERIOD * np.arange(8)[:, None], args.std_ctrl / 100).flatten()]
+                    [init_spike_trains[neuron.idx] - PERIOD, np.random.normal(spike_trains[neuron.idx][None, :] + PERIOD * np.arange(NUM_CYCLES)[:, None], args.std_ctrl / 100).flatten()]
                 )
             # set uncontrollable neurons
             else:
                 neuron.firing_times = init_spike_trains[neuron.idx] - PERIOD
                 neuron.firing_threshold = None
 
-        for i in range(10):
+        for i in range(NUM_CYCLES): # 10
             network.sim(i * PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons - args.num_ctrl_neurons))
 
             precision, recall = multi_channel_correlation(
