@@ -9,7 +9,7 @@ def box_nuv(mx, xb, gamma=1.0):
         mx (np.ndarray): the posterior mean.
         xb (np.ndarray): the box constraints.
         gamma (float): the NUV slope parameter.
-    
+
     Returns:
         (np.ndarray): the NUV means.
         (np.ndarray): the NUV variances.
@@ -17,6 +17,7 @@ def box_nuv(mx, xb, gamma=1.0):
     Vxlf = np.abs(mx + xb)
     Vxrl = np.abs(mx - xb)
     return xb * (Vxlf - Vxrl) / (Vxlf + Vxrl), Vxlf * Vxrl / (Vxlf + Vxrl) / gamma
+
 
 def right_half_space_nuv(mx, xb, gamma=1.0):
     """
@@ -26,13 +27,14 @@ def right_half_space_nuv(mx, xb, gamma=1.0):
         mx (np.ndarray): the posterior mean.
         xb (np.ndarray): the half-space constraints.
         gamma (float): the NUV slope parameter.
-    
+
     Returns:
         (np.ndarray): the NUV means.
         (np.ndarray): the NUV variances.
     """
     tmp = np.abs(mx - xb)
     return xb + tmp, tmp / gamma
+
 
 def left_half_space_nuv(mx, xb, gamma=1.0):
     """
@@ -42,13 +44,14 @@ def left_half_space_nuv(mx, xb, gamma=1.0):
         mx (np.ndarray): the posterior mean.
         xb (np.ndarray): the half-space constraints.
         gamma (float): the NUV slope parameter.
-    
+
     Returns:
         (np.ndarray): the NUV means.
         (np.ndarray): the NUV variances.
     """
     tmp = np.abs(mx - xb)
     return xb - tmp, tmp / gamma
+
 
 def binary_nuv(mx, Vx, xb):
     """
@@ -65,4 +68,4 @@ def binary_nuv(mx, Vx, xb):
     Vxlf = Vx + np.square(mx + xb)
     Vxrf = Vx + np.square(mx - xb)
 
-    return (Vxlf * xb - Vxrf * xb) / (Vxlf + Vxrf), Vxlf * Vxrf / (Vxlf + Vxrf)
+    return xb * (Vxlf - Vxrf) / (Vxlf + Vxrf), Vxlf * Vxrf / (Vxlf + Vxrf)
