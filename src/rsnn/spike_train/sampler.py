@@ -3,6 +3,8 @@ from typing import List, Optional, Union
 import numpy as np
 from tqdm.autonotebook import trange
 
+from .utils import pmf_num_spikes
+
 
 def sample_spike_trains(period:float, firing_rate:float, num_channels:int=1) -> List[np.ndarray]:
     """
@@ -29,41 +31,59 @@ def sample_spike_trains(period:float, firing_rate:float, num_channels:int=1) -> 
     if period <= 1 or firing_rate == 0:
         return [np.array([])]*num_channels
     
-    ns = np.arange(1, period, dtype=int)
-    
-    #pns = np.nan_to_num(np.power(firing_rate * (period - ns)*np.exp(firing_rate), ns) / ((period-ns)*factorial(ns-1)))
-    #pns /= np.sum(pns) # normalize
-    
-    # for numerical stability, first compute log p(n | n > 0) (unnormalized)
-    lnpns = (ns-1) * (np.log(firing_rate) + np.log(period - ns)) 
-    lnpns += np.log(firing_rate) 
-    lnpns -= firing_rate * (period - ns)
-    lnpns[1:] -= np.cumsum(np.log(ns[:-1]))
-    
-    # then, compute and normalize p(n | n > 0)
-    pns = np.exp(lnpns)
-    pns /= np.sum(pns)
-
-    # init the list of arrays of firing times
     spike_trains = []
+    
+    ns, pns = pmf_num_spikes(period, firing_rate)
 
-    for _ in trange(num_channels, desc="Sampling"):        
-        # empty spike train?
-        if np.random.binomial(1, np.exp(-firing_rate*(period - 1))):
-            spike_trains.append(np.array([]))
-            continue
-
-        # number of spikes (conditionned on non empty)? (WARNING: possibility of overflow error)
+    for _ in range(num_channels):
+        # sample the number of spikes in [0, period)
         n = np.random.choice(ns, p=pns)
-
-        # firing times? (conditionned on number of spikes and spikes at location 0 and period)
-        tfs = np.full(n, period, dtype=float)
-        for m in range(n - 1, 0, -1):
-            # sample firing times by inverse sampling with the quantile function 
-            u = np.random.uniform(0, 1)
-            tfs[m-1] = np.power(u, 1/m) * (tfs[m] - (m+1)) + m
-
-        # Ramdomly shift the firing times cyclically
-        spike_trains.append(np.sort((tfs + np.random.uniform(0, period)) % period))
+        # sample the effective poisson process in [0, period-n)
+        us = np.sort(np.random.uniform(0, period-n, n))
+        # transform the effective poisson process into a periodic spike train ...
+        if np.random.binomial(1, n/period):
+            # ... with the last spike occuring in the last time unit
+            u0 = np.random.uniform(period-1, period)
+            spike_trains.append(u0 - (us[-1] - us + (n - np.arange(1, n+1))))
+        else:
+            # ... with the last spike occuring before the last time unit
+            spike_trains.append(us + np.arange(n))
 
     return spike_trains
+
+    # ns = np.arange(1, period, dtype=int)
+    
+    # #pns = np.nan_to_num(np.power(firing_rate * (period - ns)*np.exp(firing_rate), ns) / ((period-ns)*factorial(ns-1)))
+    # #pns /= np.sum(pns) # normalize
+    
+    # # for numerical stability, first compute log p(n | n > 0) (unnormalized)
+    # lnpns = (ns-1) * (np.log(firing_rate) + np.log(period - ns)) 
+    # lnpns += np.log(firing_rate) 
+    # lnpns -= firing_rate * (period - ns)
+    # lnpns[1:] -= np.cumsum(np.log(ns[:-1]))
+    
+    # # then, compute and normalize p(n | n > 0)
+    # pns = np.exp(lnpns)
+    # pns /= np.sum(pns)
+
+    # # init the list of arrays of firing times
+    # spike_trains = []
+
+    # for _ in trange(num_channels, desc="Sampling"):        
+    #     # empty spike train?
+    #     if np.random.binomial(1, np.exp(-firing_rate*(period - 1))):
+    #         spike_trains.append(np.array([]))
+    #         continue
+
+    #     # number of spikes (conditionned on non empty)? (WARNING: possibility of overflow error)
+    #     n = np.random.choice(ns, p=pns)
+
+    #     # firing times? (conditionned on number of spikes and spikes at location 0 and period)
+    #     tfs = np.full(n, period, dtype=float)
+    #     for m in range(n - 1, 0, -1):
+    #         # sample firing times by inverse sampling with the quantile function 
+    #         u = np.random.uniform(0, 1)
+    #         tfs[m-1] = np.power(u, 1/m) * (tfs[m] - (m+1)) + m
+
+    #     # Ramdomly shift the firing times cyclically
+    #     spike_trains.append(np.sort((tfs + np.random.uniform(0, period)) % period))

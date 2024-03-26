@@ -40,8 +40,6 @@ class Neuron:
         num_inputs: int,
         input_beta: Optional[float] = 1.0,
         nominal_threshold: Optional[float] = 1.0,
-        # absolute_refractory: float,
-        # relative_refractory: float,
         sources: Optional[np.ndarray] = None,
         delays: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
