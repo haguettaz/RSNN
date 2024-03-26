@@ -1,5 +1,7 @@
 import numpy as np
 
+from .nuv import binary_nuv, box_nuv, left_half_space_nuv
+
 
 def obs_block(mxf, Vxf, myb, Vyb, C):
     """
@@ -39,18 +41,13 @@ def solve_lp(A, b, xb, max_iter=1000):
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
-    my = A @ mxf  # (N)
 
     for _ in range(max_iter):
         # nuv updates for the bounds
-        Vxlf = np.abs(mxf + xb)  # (K)
-        Vxrl = np.abs(mxf - xb)  # (K)
-        mxf = xb * (Vxlf - Vxrl) / (Vxlf + Vxrl)  # (K)
-        Vxf = Vxlf * Vxrl / (Vxlf + Vxrl)  # (K)
+        mxf, Vxf = box_nuv(mxf, xb) # (K) and (K)
 
         # nuv updates for the constraints
-        myb = b - np.abs(my - b)  # (N)
-        Vyb = np.abs(my - b)  # (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -60,10 +57,7 @@ def solve_lp(A, b, xb, max_iter=1000):
         # check convergence
         if np.allclose(mxf, prev_mxf):
             status = "converged"
-            return mxf, status
-        
-        # posterior means of Ys (we don't need the variances)
-        my = A @ mxf  # (N)
+            return mxf, status        
         
         prev_mxf = mxf
 
@@ -90,21 +84,16 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
-    my = A @ mxf  # (N)
 
     for _ in range(max_iter):
         # nuv updates for the bounds with L1 regularization
-        Vxlf = np.abs(mxf + xb)  # (K)
-        Vxrl = np.abs(mxf - xb)  # (K)
-        mxbf = xb * (Vxlf - Vxrl) / (Vxlf + Vxrl)  # (K)
-        Vxbf = Vxlf * Vxrl / (Vxlf + Vxrl)  # (K)
+        mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
         Vxl1f = np.abs(mxf) / l1_reg
         mxf = mxbf * Vxl1f / (Vxbf + Vxl1f)  # (K)
         Vxf = Vxbf * Vxl1f / (Vxbf + Vxl1f)  # (K)
 
         # nuv updates for the constraints
-        myb = b - np.abs(my - b)  # (N)
-        Vyb = np.abs(my - b)  # (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -143,22 +132,17 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
-    my = A @ mxf  # (N)
 
     Vxl2f = 1 / l2_reg
 
     for _ in range(max_iter):
         # nuv updates for the bounds with L2 regularization
-        Vxlf = np.abs(mxf + xb)  # (K)
-        Vxrl = np.abs(mxf - xb)  # (K)
-        mxbf = xb * (Vxlf - Vxrl) / (Vxlf + Vxrl)  # (K)
-        Vxbf = Vxlf * Vxrl / (Vxlf + Vxrl)  # (K)
+        mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
         mxf = mxbf * Vxl2f / (Vxbf + Vxl2f)  # (K)
         Vxf = Vxbf * Vxl2f / (Vxbf + Vxl2f)  # (K)
 
         # nuv updates for the constraints
-        myb = b - np.abs(my - b)  # (N)
-        Vyb = np.abs(my - b)  # (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -194,8 +178,6 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
         (np.ndarray): a solution to the linear program with shape (K).
         (str): the status of the optimization.
     """
-    # A x <= b subject to x in {-xb, ..., 0, ..., xb}
-    # if xb is None: no bounds on the weights
     K, N = A.shape
     M = xlvl - 1
 
@@ -203,19 +185,14 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
 
     mu = np.random.uniform(-ub, ub, (M, K))  # (M, K)
     Vu = np.ones_like(mu)  # (K)
-    my = A @ np.sum(mu, axis=0)  # (N)
 
     for _ in range(max_iter):
 
         # nuv updates for the m-levels
-        Vufm = Vu + np.square(mu + ub)
-        Vufp = Vu + np.square(mu - ub)
-        Vuf = Vufm * Vufp / (Vufm + Vufp)  # (M, K)
-        muf = (Vufm * ub - Vufp * ub) / (Vufm + Vufp)  # (M, K)
+        muf, Vuf = binary_nuv(mu, Vu, ub)  # (M, K) and (M, K)
 
         # nuv updates for the constraints
-        myb = b - np.abs(my - b)  # (N)
-        Vyb = np.abs(my - b)  # (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # forward messages at X0
         mxf = np.sum(muf, axis=0)  # (K)
@@ -240,9 +217,6 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
         if np.allclose(mxf, prev_mxf):
             status = "converged"
             return mxf, status
-        
-        # posterior means of Ys (we don't need the variances)
-        my = A @ mxf  # (N)
         
         prev_mxf = mxf
 
