@@ -1,7 +1,7 @@
-from typing import List, Optional, Union
+
+from typing import List
 
 import numpy as np
-from tqdm.autonotebook import trange
 
 from .utils import pmf_num_spikes
 
