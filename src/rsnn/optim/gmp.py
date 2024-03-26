@@ -2,13 +2,39 @@ import numpy as np
 
 
 def obs_block(mxf, Vxf, myb, Vyb, C):
-    # Warning: y has to be scalar
+    """
+    Gaussian message passing through a (scalar) observation block.
+
+    Args:
+        mxf (np.ndarray): the forward input mean vector with shape (K).
+        Vxf (np.ndarray): the forward input covariance matrix with shape (K, K).
+        myb (np.ndarray): the backward observation mean with shape (1).
+        Vyb (np.ndarray): the backward observation variance with shape (1).
+        C (np.ndarray): the observation matrix with shape (K).
+
+    Returns:
+        (np.ndarray): the forward output mean vector with shape (K).
+        (np.ndarray): the forward output covariance matrix with shape (K, K).
+    """
     CVxf = C @ Vxf
     g_inv = Vyb + np.inner(CVxf,C)
     return mxf + (myb - np.inner(C,mxf)) / g_inv * CVxf, Vxf - np.outer(CVxf, CVxf / g_inv)
 
 
 def solve_lp(A, b, xb, max_iter=1000):
+    """
+    Solve the linear program subject.
+
+    Args:
+        A (np.ndarray): the constraint matrix with shape (N, K).
+        b (np.ndarray): the constraint vector with shape (N).
+        xb (np.ndarray): the variable bounds with shape (K).
+        max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+
+    Returns:
+        (np.ndarray): a solution to the linear program with shape (K).
+        (str): the status of the optimization.
+    """
     K, N = A.shape
 
     # init with random posterior means
@@ -46,6 +72,20 @@ def solve_lp(A, b, xb, max_iter=1000):
 
 
 def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
+    """
+    Solve the linear program subject to l1 regularization.
+
+    Args:
+        A (np.ndarray): the constraint matrix with shape (N, K).
+        b (np.ndarray): the constraint vector with shape (N).
+        xb (np.ndarray): the variable bounds with shape (K).
+        l1_reg (float): the l1 regularization parameter.
+        max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+
+    Returns:
+        (np.ndarray): a solution to the linear program with shape (K).
+        (str): the status of the optimization.
+    """
     K, N = A.shape
 
     # init with random posterior means
@@ -85,6 +125,20 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
     return mxf, status
 
 def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
+    """
+    Solve the linear program subject to l2 regularization.
+
+    Args:
+        A (np.ndarray): the constraint matrix with shape (N, K).
+        b (np.ndarray): the constraint vector with shape (N).
+        xb (np.ndarray): the variable bounds with shape (K).
+        l2_reg (float): the l2 regularization parameter.
+        max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+
+    Returns:
+        (np.ndarray): a solution to the linear program with shape (K).
+        (str): the status of the optimization.
+    """
     K, N = A.shape
 
     # init with random posterior means
@@ -126,6 +180,20 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
 
 
 def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
+    """
+    Solve the linear program subject to quantization constraints.
+
+    Args:
+        A (np.ndarray): the constraint matrix with shape (N, K).
+        b (np.ndarray): the constraint vector with shape (N).
+        xb (np.ndarray): the variable bounds with shape (K).
+        xlvl (int): the number of quantization levels.
+        max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+
+    Returns:
+        (np.ndarray): a solution to the linear program with shape (K).
+        (str): the status of the optimization.
+    """
     # A x <= b subject to x in {-xb, ..., 0, ..., xb}
     # if xb is None: no bounds on the weights
     K, N = A.shape
