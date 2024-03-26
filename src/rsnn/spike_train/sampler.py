@@ -8,7 +8,7 @@ from .utils import pmf_num_spikes
 
 def sample_spike_trains(period:float, firing_rate:float, num_channels:int=1) -> List[np.ndarray]:
     """
-    Returns a single- or multi-channel periodic spike train by backward sampling.
+    Returns a single- or multi-channel periodic spike train.
 
     Args:
         period (float): The period of the spike train in [tau_min].
