@@ -2,29 +2,10 @@ import numpy as np
 from tqdm.autonotebook import trange
 
 from .nuv import binary_nuv, box_nuv, left_half_space_nuv
+from .utils import all_close_to_one_of, obs_block
 
 
-def obs_block(mxf, Vxf, myb, Vyb, C):
-    """
-    Gaussian message passing through a (scalar) observation block.
-
-    Args:
-        mxf (np.ndarray): the forward input mean vector with shape (K).
-        Vxf (np.ndarray): the forward input covariance matrix with shape (K, K).
-        myb (np.ndarray): the backward observation mean with shape (1).
-        Vyb (np.ndarray): the backward observation variance with shape (1).
-        C (np.ndarray): the observation matrix with shape (K).
-
-    Returns:
-        (np.ndarray): the forward output mean vector with shape (K).
-        (np.ndarray): the forward output covariance matrix with shape (K, K).
-    """
-    CVxf = C @ Vxf
-    g_inv = Vyb + np.inner(CVxf,C)
-    return mxf + (myb - np.inner(C,mxf)) / g_inv * CVxf, Vxf - np.outer(CVxf, CVxf / g_inv)
-
-
-def solve_lp(A, b, xb, max_iter=1000):
+def solve_lp(A, b, xb, gamma_y=1.0, gamma_xb=1.0, max_iter=1000, rtol=1e-5, atol=1e-8):
     """
     Solve the linear program subject.
 
@@ -32,11 +13,14 @@ def solve_lp(A, b, xb, max_iter=1000):
         A (np.ndarray): the constraint matrix with shape (N, K).
         b (np.ndarray): the constraint vector with shape (N).
         xb (np.ndarray): the variable bounds with shape (K).
+        gamma_y (float, optional): the constraints strength parameter. Defaults to 1.0.
+        gamma_xb (float, optional): the bounds strength parameter. Defaults to 1.0.
         max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+        rtol (float, optional): the convergence criterion relative tolerance. Defaults to 1e-5.
+        atol (float, optional): the convergence criterion absolute tolerance. Defaults to 1e-8.
 
     Returns:
-        (np.ndarray): a solution to the linear program with shape (K).
-        (str): the status of the optimization.
+        (dict): the optimization summary.
     """
     N, K = A.shape
 
@@ -45,11 +29,11 @@ def solve_lp(A, b, xb, max_iter=1000):
     prev_mxf = mxf
 
     for i in trange(max_iter):
-        # nuv updates for the bounds
-        mxf, Vxf = box_nuv(mxf, xb) # (K) and (K)
-
         # nuv updates for the constraints
-        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b, gamma_y)  # (N) and (N)
+
+        # nuv updates for the bounds
+        mxf, Vxf = box_nuv(mxf, xb, gamma_xb)  # (K) and (K)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -57,16 +41,39 @@ def solve_lp(A, b, xb, max_iter=1000):
             mxf, Vxf = obs_block(mxf, Vxf, myb[n], Vyb[n], A[n])  # (K) and (K, K)
 
         # check convergence
-        if np.allclose(mxf, prev_mxf):
-            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
-            return mxf, summary        
+        if np.allclose(mxf, prev_mxf, rtol=rtol, atol=atol):
+            summary = {
+                "num_iter": i,
+                "status": "converged",
+                "constraints": np.all(A @ mxf <= b),
+                "bounds": np.all(np.abs(mxf) <= xb),
+                "x": mxf,
+            }
+            return summary
+
         prev_mxf = mxf
 
-    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
-    return mxf, summary
+    summary = {
+        "num_iter": max_iter,
+        "status": "max_iter",
+        "constraints": np.all(A @ mxf <= b),
+        "bounds": np.all(np.abs(mxf) <= xb),
+        "x": mxf,
+    }
+    return summary
 
 
-def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=5000):
+def solve_lp_l1(
+    A,
+    b,
+    xb,
+    gamma_y=1.0,
+    gamma_xb=1.0,
+    gamma_l1=1.0,
+    max_iter=5000,
+    rtol=1e-5,
+    atol=1e-8,
+):
     """
     Solve the linear program subject to l1 regularization.
 
@@ -74,12 +81,13 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=5000):
         A (np.ndarray): the constraint matrix with shape (N, K).
         b (np.ndarray): the constraint vector with shape (N).
         xb (np.ndarray): the variable bounds with shape (K).
-        l1_reg (float): the l1 regularization parameter.
+        gamma_y (float, optional): the constraints strength parameter. Defaults to 1.0.
+        gamma_xb (float, optional): the bounds strength parameter. Defaults to 1.0.
+        gamma_l1 (float, optional): the l1 strength parameter. Defaults to 1.0.
         max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
 
     Returns:
-        (np.ndarray): a solution to the linear program with shape (K).
-        (str): the status of the optimization.
+        (dict): the optimization summary.
     """
     N, K = A.shape
 
@@ -88,14 +96,14 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=5000):
     prev_mxf = mxf
 
     for i in trange(max_iter):
+        # nuv updates for the constraints
+        myb, Vyb = left_half_space_nuv(A @ mxf, b, gamma_y)  # (N) and (N)
+
         # nuv updates for the bounds with L1 regularization
-        mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
-        Vxl1f = np.abs(mxf) / l1_reg
+        mxbf, Vxbf = box_nuv(mxf, xb, gamma_xb)  # (K) and (K)
+        Vxl1f = np.abs(mxf) / gamma_l1
         mxf = mxbf * Vxl1f / (Vxbf + Vxl1f)  # (K)
         Vxf = Vxbf * Vxl1f / (Vxbf + Vxl1f)  # (K)
-
-        # nuv updates for the constraints
-        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -103,15 +111,41 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=5000):
             mxf, Vxf = obs_block(mxf, Vxf, myb[n], Vyb[n], A[n])  # (K) and (K, K)
 
         # check convergence
-        if np.allclose(mxf, prev_mxf):
-            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L1 regularization: {np.mean(np.abs(mxf))}"
-            return mxf, summary        
+        if np.allclose(mxf, prev_mxf, rtol=rtol, atol=atol):
+            summary = {
+                "num_iter": i,
+                "status": "converged",
+                "constraints": np.all(A @ mxf <= b),
+                "bounds": np.all(np.abs(mxf) <= xb),
+                "l1": np.mean(np.abs(mxf)),
+                "x": mxf,
+            }
+            return summary
+
         prev_mxf = mxf
 
-    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L1 regularization: {np.mean(np.abs(mxf))}"
-    return mxf, summary
+    summary = {
+        "num_iter": max_iter,
+        "status": "max_iter",
+        "constraints": np.all(A @ mxf <= b),
+        "bounds": np.all(np.abs(mxf) <= xb),
+        "l1": np.mean(np.abs(mxf)),
+        "x": mxf,
+    }
+    return summary
 
-def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=5000):
+
+def solve_lp_l2(
+    A,
+    b,
+    xb,
+    gamma_y=1.0,
+    gamma_xb=1.0,
+    gamma_l2=1.0,
+    max_iter=5000,
+    rtol=1e-5,
+    atol=1e-8,
+):
     """
     Solve the linear program subject to l2 regularization.
 
@@ -119,12 +153,15 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=5000):
         A (np.ndarray): the constraint matrix with shape (N, K).
         b (np.ndarray): the constraint vector with shape (N).
         xb (np.ndarray): the variable bounds with shape (K).
-        l2_reg (float): the l2 regularization parameter.
+        gamma_y (float, optional): the constraints strength parameter. Defaults to 1.0.
+        gamma_xb (float, optional): the bounds strength parameter. Defaults to 1.0.
+        gamma_l2 (float, optional): the l2 strength parameter. Defaults to 1.0.
         max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+        rtol (float, optional): the convergence criterion relative tolerance. Defaults to 1e-5.
+        atol (float, optional): the convergence criterion absolute tolerance. Defaults to 1e-8.
 
     Returns:
-        (np.ndarray): a solution to the linear program with shape (K).
-        (str): the status of the optimization.
+        (dict): the optimization summary.
     """
     N, K = A.shape
 
@@ -132,16 +169,16 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=5000):
     mxf = np.random.uniform(-xb, xb, K)  # (K)
     prev_mxf = mxf
 
-    Vxl2f = 1 / l2_reg
+    Vxl2f = 1 / gamma_l2
 
     for i in trange(max_iter):
+        # nuv updates for the constraints
+        myb, Vyb = left_half_space_nuv(A @ mxf, b, gamma_y)  # (N) and (N)
+
         # nuv updates for the bounds with L2 regularization
-        mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
+        mxbf, Vxbf = box_nuv(mxf, xb, gamma_xb)  # (K) and (K)
         mxf = mxbf * Vxl2f / (Vxbf + Vxl2f)  # (K)
         Vxf = Vxbf * Vxl2f / (Vxbf + Vxl2f)  # (K)
-
-        # nuv updates for the constraints
-        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
 
         # posterior mean and variance of X0
         Vxf = np.diag(Vxf)  # (K, K)
@@ -149,16 +186,33 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=5000):
             mxf, Vxf = obs_block(mxf, Vxf, myb[n], Vyb[n], A[n])  # (K) and (K, K)
 
         # check convergence
-        if np.allclose(mxf, prev_mxf):
-            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L2 regularization: {np.mean(np.square(mxf))}"
-            return mxf, summary        
+        if np.allclose(mxf, prev_mxf, rtol=rtol, atol=atol):
+            summary = {
+                "num_iter": i,
+                "status": "converged",
+                "constraints": np.all(A @ mxf <= b),
+                "bounds": np.all(np.abs(mxf) <= xb),
+                "l2": np.mean(np.square(mxf)),
+                "x": mxf,
+            }
+            return summary
+
         prev_mxf = mxf
 
-    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L2 regularization: {np.mean(np.square(mxf))}"
-    return mxf, summary
+    summary = {
+        "num_iter": max_iter,
+        "status": "max_iter",
+        "constraints": np.all(A @ mxf <= b),
+        "bounds": np.all(np.abs(mxf) <= xb),
+        "l2": np.mean(np.square(mxf)),
+        "x": mxf,
+    }
+    return summary
 
 
-def solve_lp_q(A, b, xb, xlvl, max_iter=10000):
+def solve_lp_q(
+    A, b, xb, xlvl, gamma_y=1.0, max_iter=5000, rtol=1e-5, atol=1e-8
+):
     """
     Solve the linear program subject to quantization constraints.
 
@@ -167,11 +221,13 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=10000):
         b (np.ndarray): the constraint vector with shape (N).
         xb (np.ndarray): the variable bounds with shape (K).
         xlvl (int): the number of quantization levels.
-        max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
+        gamma_y (float, optional): the constraints strength parameter. Defaults to 1.0.
+        max_iter (int, optional): the maximum number of iteration. Defaults to 5000.
+        rtol (float, optional): the convergence criterion relative tolerance. Defaults to 1e-5.
+        atol (float, optional): the convergence criterion absolute tolerance. Defaults to 1e-8.
 
     Returns:
-        (np.ndarray): a solution to the linear program with shape (K).
-        (str): the status of the optimization.
+        (dict): the optimization summary.
     """
     N, K = A.shape
     M = xlvl - 1
@@ -181,15 +237,15 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=10000):
     mu = np.random.uniform(-ub, ub, (M, K))  # (M, K)
     Vu = np.ones_like(mu)  # (K)
     mxf = np.sum(mu, axis=0)  # (K)
-    prev_mxf = mxf
+    prev_mu = mu
 
-    for i in ttrange(max_iter):
+    for i in trange(max_iter):
 
         # nuv updates for the m-levels
         muf, Vuf = binary_nuv(mu, Vu, ub)  # (M, K) and (M, K)
 
         # nuv updates for the constraints
-        myb, Vyb = left_half_space_nuv(A @ mxf, b) # (N) and (N)
+        myb, Vyb = left_half_space_nuv(A @ mxf, b, gamma_y)  # (N) and (N)
 
         # forward messages at X0
         mxf = np.sum(muf, axis=0)  # (K)
@@ -207,14 +263,31 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=10000):
         xix0t = xixf - Wxf * mxf  # (K)
 
         # posterior means and variances of Us
-        mu = muf - muf * xix0t  # (M, K)
+        mu = muf - Vuf * xix0t  # (M, K)
         Vu = Vuf - np.square(Vuf) * Wx0t  # (M, K)
 
         # check convergence
-        if np.allclose(mxf, prev_mxf):
-            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
-            return mxf, summary        
-        prev_mxf = mxf
+        if np.allclose(mu, prev_mu, rtol=rtol, atol=atol):
+            summary = {
+                "num_iter": i,
+                "status": "converged",
+                "constraints": np.all(A @ mxf <= b),
+                "quantization": all_close_to_one_of(
+                    mxf, np.linspace(-xb, xb, xlvl), atol=1e-2
+                ),
+                "x": mxf
+            }
+            return summary
 
-    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
-    return mxf, summary
+        prev_mu = mu
+
+    summary = {
+        "num_iter": max_iter,
+        "status": "max_iter",
+        "constraints": np.all(A @ mxf <= b),
+        "quantization": all_close_to_one_of(
+            mxf, np.linspace(-xb, xb, xlvl), atol=1e-2
+        ),
+        "x": mxf,
+    }
+    return summary

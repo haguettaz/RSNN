@@ -32,8 +32,7 @@ def right_half_space_nuv(mx, xb, gamma=1.0):
         (np.ndarray): the NUV means.
         (np.ndarray): the NUV variances.
     """
-    tmp = np.abs(mx - xb)
-    return xb + tmp, tmp / gamma
+    return xb + np.abs(mx - xb), np.abs(mx - xb) / gamma
 
 
 def left_half_space_nuv(mx, xb, gamma=1.0):
@@ -49,8 +48,7 @@ def left_half_space_nuv(mx, xb, gamma=1.0):
         (np.ndarray): the NUV means.
         (np.ndarray): the NUV variances.
     """
-    tmp = np.abs(mx - xb)
-    return xb - tmp, tmp / gamma
+    return xb - np.abs(mx - xb), np.abs(mx - xb) / gamma
 
 
 def binary_nuv(mx, Vx, xb):
