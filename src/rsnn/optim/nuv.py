@@ -1,4 +1,4 @@
-import numpy as np
+import torch
 
 
 def box_nuv(mx, xb, gamma=1.0):
@@ -6,16 +6,16 @@ def box_nuv(mx, xb, gamma=1.0):
     Update the NUV means and variances for a box constraints of the form |x| <= xb.
 
     Args:
-        mx (np.ndarray): the posterior mean.
-        xb (np.ndarray): the box constraints.
+        mx (torch.tensor): the posterior mean.
+        xb (torch.tensor): the box constraints.
         gamma (float): the NUV slope parameter.
 
     Returns:
-        (np.ndarray): the NUV means.
-        (np.ndarray): the NUV variances.
+        (torch.tensor): the NUV means.
+        (torch.tensor): the NUV variances.
     """
-    Vxlf = np.abs(mx + xb)
-    Vxrl = np.abs(mx - xb)
+    Vxlf = torch.abs(mx + xb)
+    Vxrl = torch.abs(mx - xb)
     return xb * (Vxlf - Vxrl) / (Vxlf + Vxrl), Vxlf * Vxrl / (Vxlf + Vxrl) / gamma
 
 
@@ -24,15 +24,15 @@ def right_half_space_nuv(mx, xb, gamma=1.0):
     Update the NUV means and variances for a right half space constraints of the form x >= xb.
 
     Args:
-        mx (np.ndarray): the posterior mean.
-        xb (np.ndarray): the half-space constraints.
+        mx (torch.tensor): the posterior mean.
+        xb (torch.tensor): the half-space constraints.
         gamma (float): the NUV slope parameter.
 
     Returns:
-        (np.ndarray): the NUV means.
-        (np.ndarray): the NUV variances.
+        (torch.tensor): the NUV means.
+        (torch.tensor): the NUV variances.
     """
-    return xb + np.abs(mx - xb), np.abs(mx - xb) / gamma
+    return xb + torch.abs(mx - xb), torch.abs(mx - xb) / gamma
 
 
 def left_half_space_nuv(mx, xb, gamma=1.0):
@@ -40,15 +40,15 @@ def left_half_space_nuv(mx, xb, gamma=1.0):
     Update the NUV means and variances for a left half space constraints of the form x <= xb.
 
     Args:
-        mx (np.ndarray): the posterior mean.
-        xb (np.ndarray): the half-space constraints.
+        mx (torch.tensor): the posterior mean.
+        xb (torch.tensor): the half-space constraints.
         gamma (float): the NUV slope parameter.
 
     Returns:
-        (np.ndarray): the NUV means.
-        (np.ndarray): the NUV variances.
+        (torch.tensor): the NUV means.
+        (torch.tensor): the NUV variances.
     """
-    return xb - np.abs(mx - xb), np.abs(mx - xb) / gamma
+    return xb - torch.abs(mx - xb), torch.abs(mx - xb) / gamma
 
 
 def binary_nuv(mx, Vx, xb):
@@ -56,14 +56,14 @@ def binary_nuv(mx, Vx, xb):
     Update the NUV means and variances for a binary constraints of the form x in {-xb, xb}.
 
     Args:
-        mx (np.ndarray): the posterior mean.
-        xb (np.ndarray): the binary constraints.
+        mx (torch.tensor): the posterior mean.
+        xb (torch.tensor): the binary constraints.
 
     Returns:
-        (np.ndarray): the NUV means.
-        (np.ndarray): the NUV variances.
+        (torch.tensor): the NUV means.
+        (torch.tensor): the NUV variances.
     """
-    Vxlf = Vx + np.square(mx + xb)
-    Vxrf = Vx + np.square(mx - xb)
+    Vxlf = Vx + torch.square(mx + xb)
+    Vxrf = Vx + torch.square(mx - xb)
 
     return xb * (Vxlf - Vxrf) / (Vxlf + Vxrf), Vxlf * Vxrf / (Vxlf + Vxrf)
