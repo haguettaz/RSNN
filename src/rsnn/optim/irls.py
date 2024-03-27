@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm.autonotebook import trange
 
 from .nuv import binary_nuv, box_nuv, left_half_space_nuv
 
@@ -37,12 +38,13 @@ def solve_lp(A, b, xb, max_iter=1000):
         (np.ndarray): a solution to the linear program with shape (K).
         (str): the status of the optimization.
     """
-    K, N = A.shape
+    N, K = A.shape
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
+    prev_mxf = mxf
 
-    for _ in range(max_iter):
+    for i in trange(max_iter):
         # nuv updates for the bounds
         mxf, Vxf = box_nuv(mxf, xb) # (K) and (K)
 
@@ -56,16 +58,15 @@ def solve_lp(A, b, xb, max_iter=1000):
 
         # check convergence
         if np.allclose(mxf, prev_mxf):
-            status = "converged"
-            return mxf, status        
-        
+            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
+            return mxf, summary        
         prev_mxf = mxf
 
-    status = "max_iter"
-    return mxf, status
+    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
+    return mxf, summary
 
 
-def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
+def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=5000):
     """
     Solve the linear program subject to l1 regularization.
 
@@ -80,12 +81,13 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
         (np.ndarray): a solution to the linear program with shape (K).
         (str): the status of the optimization.
     """
-    K, N = A.shape
+    N, K = A.shape
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
+    prev_mxf = mxf
 
-    for _ in range(max_iter):
+    for i in trange(max_iter):
         # nuv updates for the bounds with L1 regularization
         mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
         Vxl1f = np.abs(mxf) / l1_reg
@@ -102,18 +104,14 @@ def solve_lp_l1(A, b, xb, l1_reg=1.0, max_iter=1000):
 
         # check convergence
         if np.allclose(mxf, prev_mxf):
-            status = "converged"
-            return mxf, status
-        
-        # posterior means of Ys (we don't need the variances)
-        my = A @ mxf  # (N)
-        
+            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L1 regularization: {np.mean(np.abs(mxf))}"
+            return mxf, summary        
         prev_mxf = mxf
 
-    status = "max_iter"
-    return mxf, status
+    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L1 regularization: {np.mean(np.abs(mxf))}"
+    return mxf, summary
 
-def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
+def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=5000):
     """
     Solve the linear program subject to l2 regularization.
 
@@ -128,14 +126,15 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
         (np.ndarray): a solution to the linear program with shape (K).
         (str): the status of the optimization.
     """
-    K, N = A.shape
+    N, K = A.shape
 
     # init with random posterior means
     mxf = np.random.uniform(-xb, xb, K)  # (K)
+    prev_mxf = mxf
 
     Vxl2f = 1 / l2_reg
 
-    for _ in range(max_iter):
+    for i in trange(max_iter):
         # nuv updates for the bounds with L2 regularization
         mxbf, Vxbf = box_nuv(mxf, xb) # (K) and (K)
         mxf = mxbf * Vxl2f / (Vxbf + Vxl2f)  # (K)
@@ -151,19 +150,15 @@ def solve_lp_l2(A, b, xb, l2_reg=1.0, max_iter=1000):
 
         # check convergence
         if np.allclose(mxf, prev_mxf):
-            status = "converged"
-            return mxf, status
-        
-        # posterior means of Ys (we don't need the variances)
-        my = A @ mxf  # (N)
-        
+            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L2 regularization: {np.mean(np.square(mxf))}"
+            return mxf, summary        
         prev_mxf = mxf
 
-    status = "max_iter"
-    return mxf, status
+    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied. L2 regularization: {np.mean(np.square(mxf))}"
+    return mxf, summary
 
 
-def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
+def solve_lp_q(A, b, xb, xlvl, max_iter=10000):
     """
     Solve the linear program subject to quantization constraints.
 
@@ -178,15 +173,17 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
         (np.ndarray): a solution to the linear program with shape (K).
         (str): the status of the optimization.
     """
-    K, N = A.shape
+    N, K = A.shape
     M = xlvl - 1
 
     ub = xb / (xlvl - 1)
 
     mu = np.random.uniform(-ub, ub, (M, K))  # (M, K)
     Vu = np.ones_like(mu)  # (K)
+    mxf = np.sum(mu, axis=0)  # (K)
+    prev_mxf = mxf
 
-    for _ in range(max_iter):
+    for i in ttrange(max_iter):
 
         # nuv updates for the m-levels
         muf, Vuf = binary_nuv(mu, Vu, ub)  # (M, K) and (M, K)
@@ -215,10 +212,9 @@ def solve_lp_q(A, b, xb, xlvl, max_iter=1000):
 
         # check convergence
         if np.allclose(mxf, prev_mxf):
-            status = "converged"
-            return mxf, status
-        
+            summary = f"Converged in {i} iterations. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
+            return mxf, summary        
         prev_mxf = mxf
 
-    status = "max_iter"
-    return mxf, status
+    summary = f"Maximum number of iterations reached without convergence. {'All constraints are' if np.all(A@mxf <= b) and np.all(np.abs(mxf) <= xb) else 'Some constraints are not'} satisfied."
+    return mxf, summary
