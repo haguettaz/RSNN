@@ -16,6 +16,19 @@ def all_close_to_one_of(array, values, rtol=1e-5, atol=1e-8):
     """
     return np.all(np.any(np.isclose(array[..., np.newaxis], values, rtol=rtol, atol=atol), axis=-1))
 
+def round_to_nearest(array, values):
+    """
+    Round an array to the nearest value in a set of values.
+
+    Args:
+        array (np.ndarray): the input array.
+        values (np.ndarray): the set of values.
+
+    Returns:
+        (np.ndarray): the rounded array.
+    """
+    return values[np.argmin(np.abs(array[..., np.newaxis] - values), axis=-1)]
+
 def obs_block(mxf, Vxf, myb, Vyb, C):
     """
     Gaussian message passing through a (scalar) observation block.

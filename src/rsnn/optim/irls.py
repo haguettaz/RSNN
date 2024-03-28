@@ -2,7 +2,7 @@ import numpy as np
 from tqdm.autonotebook import trange
 
 from .nuv import binary_nuv, box_nuv, left_half_space_nuv
-from .utils import all_close_to_one_of, obs_block
+from .utils import all_close_to_one_of, obs_block, round_to_nearest
 
 
 def solve_lp(A, b, xb, gamma_y=1.0, gamma_xb=1.0, max_iter=1000, rtol=1e-5, atol=1e-8):
@@ -45,8 +45,8 @@ def solve_lp(A, b, xb, gamma_y=1.0, gamma_xb=1.0, max_iter=1000, rtol=1e-5, atol
             summary = {
                 "num_iter": i,
                 "status": "converged",
-                "constraints": np.all(A @ mxf <= b),
-                "bounds": np.all(np.abs(mxf) <= xb),
+                "constraints": np.all(A @ mxf <= b + atol),
+                "bounds": np.all(np.abs(mxf) <= xb + atol),
                 "x": mxf,
             }
             return summary
@@ -56,8 +56,8 @@ def solve_lp(A, b, xb, gamma_y=1.0, gamma_xb=1.0, max_iter=1000, rtol=1e-5, atol
     summary = {
         "num_iter": max_iter,
         "status": "max_iter",
-        "constraints": np.all(A @ mxf <= b),
-        "bounds": np.all(np.abs(mxf) <= xb),
+        "constraints": np.all(A @ mxf <= b + atol),
+        "bounds": np.all(np.abs(mxf) <= xb + atol),
         "x": mxf,
     }
     return summary
@@ -85,7 +85,9 @@ def solve_lp_l1(
         gamma_xb (float, optional): the bounds strength parameter. Defaults to 1.0.
         gamma_l1 (float, optional): the l1 strength parameter. Defaults to 1.0.
         max_iter (int, optional): the maximum number of iteration. Defaults to 1000.
-
+        rtol (float, optional): the convergence criterion relative tolerance. Defaults to 1e-5.
+        atol (float, optional): the convergence criterion absolute tolerance. Defaults to 1e-8.
+        
     Returns:
         (dict): the optimization summary.
     """
@@ -115,8 +117,8 @@ def solve_lp_l1(
             summary = {
                 "num_iter": i,
                 "status": "converged",
-                "constraints": np.all(A @ mxf <= b),
-                "bounds": np.all(np.abs(mxf) <= xb),
+                "constraints": np.all(A @ mxf <= b + atol),
+                "bounds": np.all(np.abs(mxf) <= xb + atol),
                 "l1": np.mean(np.abs(mxf)),
                 "x": mxf,
             }
@@ -127,8 +129,8 @@ def solve_lp_l1(
     summary = {
         "num_iter": max_iter,
         "status": "max_iter",
-        "constraints": np.all(A @ mxf <= b),
-        "bounds": np.all(np.abs(mxf) <= xb),
+        "constraints": np.all(A @ mxf <= b + atol),
+        "bounds": np.all(np.abs(mxf) <= xb + atol),
         "l1": np.mean(np.abs(mxf)),
         "x": mxf,
     }
@@ -190,8 +192,8 @@ def solve_lp_l2(
             summary = {
                 "num_iter": i,
                 "status": "converged",
-                "constraints": np.all(A @ mxf <= b),
-                "bounds": np.all(np.abs(mxf) <= xb),
+                "constraints": np.all(A @ mxf <= b + atol),
+                "bounds": np.all(np.abs(mxf) <= xb + atol),
                 "l2": np.mean(np.square(mxf)),
                 "x": mxf,
             }
@@ -202,8 +204,8 @@ def solve_lp_l2(
     summary = {
         "num_iter": max_iter,
         "status": "max_iter",
-        "constraints": np.all(A @ mxf <= b),
-        "bounds": np.all(np.abs(mxf) <= xb),
+        "constraints": np.all(A @ mxf <= b + atol),
+        "bounds": np.all(np.abs(mxf) <= xb + atol),
         "l2": np.mean(np.square(mxf)),
         "x": mxf,
     }
@@ -268,26 +270,32 @@ def solve_lp_q(
 
         # check convergence
         if np.allclose(mu, prev_mu, rtol=rtol, atol=atol):
+            x_r = round_to_nearest(mxf, np.linspace(-xb, xb, xlvl))
             summary = {
                 "num_iter": i,
                 "status": "converged",
-                "constraints": np.all(A @ mxf <= b),
+                "x": mxf,
+                "constraints": np.all(A @ mxf <= b + atol),
                 "quantization": all_close_to_one_of(
                     mxf, np.linspace(-xb, xb, xlvl), atol=1e-2
                 ),
-                "x": mxf
+                "x_rounded": x_r,
+                "constraints_after_rounding": np.all(A @ x_r <= b),
             }
             return summary
 
         prev_mu = mu
 
+    x_r = round_to_nearest(mxf, np.linspace(-xb, xb, xlvl))
     summary = {
         "num_iter": max_iter,
         "status": "max_iter",
-        "constraints": np.all(A @ mxf <= b),
+        "x": mxf,
+        "constraints": np.all(A @ mxf <= b + atol),
         "quantization": all_close_to_one_of(
             mxf, np.linspace(-xb, xb, xlvl), atol=1e-2
         ),
-        "x": mxf,
+        "x_rounded": x_r,
+        "constraints_after_rounding": np.all(A @ x_r <= b),
     }
     return summary
