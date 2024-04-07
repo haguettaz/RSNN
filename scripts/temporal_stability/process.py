@@ -2,11 +2,11 @@ import os
 
 import pandas as pd
 
-FIRING_RATE = 0.2 # in number of spikes / tau_min (outside guard period)
-DELAY_MIN = 0.1  # in tau_min
+FIRING_RATE = 0.2 # in number of spikes / tau_0 (outside guard period)
+DELAY_MIN = 0.1  # in tau_0
 
-PERIOD = 50 # in tau_min
-FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
+PERIOD = 50 # in tau_0
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 if __name__ == "__main__":
     list_of_df = []

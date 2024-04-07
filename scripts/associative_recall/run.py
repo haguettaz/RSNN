@@ -14,11 +14,11 @@ from rsnn.spike_train.sampler import sample_spike_trains
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
-FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
-DELAY_MIN = 0.1  # in tau_min
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
+DELAY_MIN = 0.1  # in tau_0
 
-PERIOD = 50  # in tau_min
-FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
+PERIOD = 50  # in tau_0
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 NUM_CYCLES = 20
 
 if __name__ == "__main__":
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--l2", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--init", type=str, default="random")  # in {"silent", "random", "memory"}
     parser.add_argument("--num_ctrl_neurons", type=int, default=50)
-    parser.add_argument("--std_ctrl", type=int, default=10)  # in % of tau_min
+    parser.add_argument("--std_ctrl", type=int, default=10)  # in % of tau_0
 
     args = parser.parse_args()
 

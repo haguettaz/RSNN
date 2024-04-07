@@ -11,8 +11,8 @@ def sample_spike_trains(period:float, firing_rate:float, num_channels:int=1) -> 
     Returns a single- or multi-channel periodic spike train.
 
     Args:
-        period (float): The period of the spike train in [tau_min].
-        firing_rate (float): The firing rate of the spike train in [1/\tau_min].
+        period (float): The period of the spike train in [tau_0].
+        firing_rate (float): The firing rate of the spike train in [1/\tau_0].
         num_channels (int, optional): The number of channels / neurons. Defaults to 1.
         
     Raises:

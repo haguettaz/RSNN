@@ -9,10 +9,10 @@ from tqdm import trange
 from rsnn.neuron.neuron import Neuron
 from rsnn.spike_train.sampler import sample_spike_trains
 
-# Remark: tau_min is the minimum distance between two consecutive spikes, i.e., the absolute refractory period.
+# Remark: tau_0 is the minimum distance between two consecutive spikes, i.e., the absolute refractory period.
 
-FIRING_RATE = 0.2 # in number of spikes / tau_min (outside guard period)
-DELAY_MIN = 0.1  # in tau_min
+FIRING_RATE = 0.2 # in number of spikes / tau_0 (outside guard period)
+DELAY_MIN = 0.1  # in tau_0
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Storage Capacity Simulation")

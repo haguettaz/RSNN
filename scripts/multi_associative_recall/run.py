@@ -14,11 +14,11 @@ from rsnn.spike_train.sampler import sample_spike_trains
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
-FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
-DELAY_MIN = 0.1  # in tau_min
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
+DELAY_MIN = 0.1  # in tau_0
 
-PERIOD = 30  # in tau_min
-FIRING_RATE = 0.2  # in number of spikes / tau_min (outside guard period)
+PERIOD = 30  # in tau_0
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 NUM_PATTERNS = 2
 SCHEDULE = [

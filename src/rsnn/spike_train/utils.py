@@ -8,8 +8,8 @@ def pmf_num_spikes(period: float, firing_rate: float) -> Tuple[np.ndarray, np.nd
     Returns the probability mass function of the number of spikes in a periodic spike train with a given period and firing rate. Note: for numerical stability, the pmf is computed first in the log domain.
 
     Args:
-        period (float): the period of the spike train in [tau_min].
-        firing_rate (float): the firing rate of the spike train in [1/tau_min].
+        period (float): the period of the spike train in [tau_0].
+        firing_rate (float): the firing rate of the spike train in [1/tau_0].
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: the support of the pmf and the pmf.
@@ -27,8 +27,8 @@ def expected_num_spikes(period: float, firing_rate: float) -> float:
     Returns the expected number of spikes in a periodic spike train with a given period and firing rate.
 
     Args:
-        period (float): the period of the spike train in [tau_min].
-        firing_rate (float): the firing rate of the spike train in [1/tau_min].
+        period (float): the period of the spike train in [tau_0].
+        firing_rate (float): the firing rate of the spike train in [1/tau_0].
 
     Returns:
         float: the expected number of spikes.
