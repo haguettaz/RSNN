@@ -38,16 +38,14 @@ def sample_spike_trains(period:float, firing_rate:float, num_channels:int=1) -> 
     for _ in range(num_channels):
         # sample the number of spikes in [0, period)
         n = np.random.choice(ns, p=pns)
+        if n == 0:
+            spike_trains.append(np.array([]))
+            continue
         # sample the effective poisson process in [0, period-n)
-        us = np.sort(np.random.uniform(0, period-n, n))
+        ts = np.full(n, np.random.uniform(0, period))
+        ts[1:] += np.sort(np.random.uniform(0, period-n, n-1)) + np.arange(1, n)
         # transform the effective poisson process into a periodic spike train ...
-        if np.random.binomial(1, n/period):
-            # ... with the last spike occuring in the last time unit
-            u0 = np.random.uniform(period-1, period)
-            spike_trains.append(u0 - (us[-1] - us + (n - np.arange(1, n+1))))
-        else:
-            # ... with the last spike occuring before the last time unit
-            spike_trains.append(us + np.arange(n))
+        spike_trains.append(np.sort(ts % period))
 
     return spike_trains
 

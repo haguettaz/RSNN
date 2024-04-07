@@ -3,12 +3,12 @@ import pickle
 import random
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import cvxpy as cp
+# import cvxpy as cp
 import gurobipy as gp
 import numpy as np
 from gurobipy import GRB
 from scipy.optimize import brentq
-from scipy.special import lambertw
+# from scipy.special import lambertw
 from tqdm import tqdm
 
 
@@ -50,12 +50,12 @@ class Neuron:
         Args:
             idx (int): the neuron index
             num_inputs (int): the number of inputs
-            input_beta (float): the input kernel time constant [in tau_min]
+            input_beta (float): the input kernel time constant [in tau_0]
             nominal_threshold (float): the nominal firing threshold
             sources (np.ndarray, optional): the input sources. Defaults to None.
-            delays (np.ndarray, optional): the input delays [in tau_min]. Defaults to None.
+            delays (np.ndarray, optional): the input delays [in tau_0]. Defaults to None.
             weights (np.ndarray, optional): the input weights. Defaults to None.
-            firing_times (np.ndarray, optional): the firing times [in tau_min]. Defaults to None.
+            firing_times (np.ndarray, optional): the firing times [in tau_0]. Defaults to None.
 
         Raises:
             ValueError: if the number of inputs is negative
@@ -135,32 +135,32 @@ class Neuron:
         firing_times: np.ndarray,
         input_firing_times: List[np.ndarray],
         period: float,
-        firing_area: float = 0.2,
-        margin_min: float = 1.0,
-        slope_min: float = 2.0, # 0.5 
-        weight_bound: float = 0.2,
-        weight_regularization: str = None,
-        weight_quantization: int = None,
-        sampling_res: float = 5e-2,
+        firing_area: Optional[float] = 0.2,
+        margin_min: Optional[float] = 1.0,
+        slope_min: Optional[float] = 2.0, # 0.5 
+        weight_bound: Optional[float] = 0.2,
+        weight_regularization: Optional[str] = None,
+        weight_quantization: Optional[int] = None,
+        sampling_res: Optional[float] = 5e-2,
     ):
         """
         Optimize the weights to robustly reproduce multiple prescribed spike trains when fed with specific input spike trains.
 
         Args:
-            firing_times (np.ndarray): the multiple spike trains to reproduce [in tau_min].
-            input_firing_times (list of np.ndarrays): the multiple input spike trains [in tau_min].
-            period (float): the period of the spike trains [in tau_min].
+            firing_times (np.ndarray): the multiple spike trains to reproduce [in tau_0].
+            input_firing_times (list of np.ndarrays): the multiple input spike trains [in tau_0].
+            period (float): the period of the spike trains [in tau_0].
             firing_area (float, optional): the half-width defining the area around a spike. Defaults to 0.2.
             margin_min (float, optional): the minimum margin to firing threshold in the silent zone. Defaults to 1.0.
-            slope_min (float, optional): the minimum slope around a spike [in firing_threshold / tau_min]. Defaults to 2.0.
+            slope_min (float, optional): the minimum slope around a spike [in firing_threshold / tau_0]. Defaults to 2.0.
             weight_bound (float, optional): the (magnitude) weight bound [in firing_threshold]. Defaults to 0.2.
             weight_regularization (str, optional): the weight regularizer. If None, no regularization (except the bounds). Otherwise, should be 'l1' or 'l2'. Defaults to None.
             weight_quantization (int, optional): the weight quantizer. If None, no quantization. Otherwise, should be a positive integer. Defaults to None.
-            sampling_res (float, optional): the sampling resolution to set the template constraints [in tau_min]. Defaults to 5e-2.
+            sampling_res (float, optional): the sampling resolution to set the template constraints [in tau_0]. Defaults to 5e-2.
         """
 
         if firing_area > 0.5:
-            raise ValueError("The firing area must be smaller than tau_min / 2.")
+            raise ValueError("The firing area must be smaller than tau_0 / 2.")
 
         model_gp = gp.Model()
         model_gp.setParam("OutputFlag", 0)
@@ -209,7 +209,7 @@ class Neuron:
 
         # Add constraints
         max_num_spikes = max([fts.size for fts in input_firing_times])
-        input_firing_times = np.vstack([np.pad(ft, (max_num_spikes - ft.size, 0), constant_values=np.nan) for ft in input_firing_times])
+        input_firing_times = np.vstack([np.pad(ft, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
 
         sampling_times = np.arange(0, period, sampling_res)
         
@@ -247,37 +247,39 @@ class Neuron:
         firing_times_s: List[np.ndarray],
         input_firing_times_s: List[List[np.ndarray]],
         period: float,
-        firing_area: float = 0.2,
-        margin_min: float = 1.0,
-        slope_min: float = 2.0, # 0.5 
-        weight_bound: float = 0.2,
-        weight_regularization: str = None,
-        weight_quantization: int = None,
-        sampling_res: float = 5e-2,
+        firing_area: Optional[float] = 0.2,
+        margin_min: Optional[float] = 1.0,
+        slope_min: Optional[float] = 2.0, # 0.5 
+        weight_bound: Optional[float] = 0.2,
+        weight_regularization: Optional[str] = None,
+        weight_quantization: Optional[int] = None,
+        sampling_res: Optional[float] = 5e-2,
     ):
         """Optimize the weights to robustly reproduce multiple prescribed spike trains when fed with specific input spike trains.
 
         Args:
-            firing_times_s (list of np.ndarrays): the multiple spike trains to reproduce [in tau_min].
-            input_firing_times_s (list of list of np.ndarrays): the multiple input spike trains [in tau_min].
-            period (float): the period of the spike trains [in tau_min].
+            firing_times_s (list of np.ndarrays): the multiple spike trains to reproduce [in tau_0].
+            input_firing_times_s (list of list of np.ndarrays): the multiple input spike trains [in tau_0].
+            period (float): the period of the spike trains [in tau_0].
             firing_area (float, optional): the half-width defining the area around a spike. Defaults to 0.2.
             margin_min (float, optional): the minimum margin to firing threshold in the silent zone. Defaults to 1.0.
-            slope_min (float, optional): the minimum slope around a spike [in firing_threshold / tau_min]. Defaults to 2.0.
+            slope_min (float, optional): the minimum slope around a spike [in firing_threshold / tau_0]. Defaults to 2.0.
             weight_bound (float, optional): the (magnitude) weight bound [in firing_threshold]. Defaults to 0.2.
             weight_regularization (str, optional): the weight regularizer. If None, no regularization (except the bounds). Otherwise, should be 'l1' or 'l2'. Defaults to None.
             weight_quantization (int, optional): the weight quantizer. If None, no quantization. Otherwise, should be a positive integer. Defaults to None.
-            sampling_res (float, optional): the sampling resolution to set the template constraints [in tau_min]. Defaults to 5e-2.
+            sampling_res (float, optional): the sampling resolution to set the template constraints [in tau_0]. Defaults to 5e-2.
         """
+
+        if firing_area > 0.5:
+            raise ValueError("The firing area must be smaller than tau_0 / 2.")
+
         model_gp = gp.Model()
         model_gp.setParam("OutputFlag", 0)
-
-        adaptive_threshold = lambda t_, ft_: self.nominal_threshold + np.nansum(self.refractory_kernel((t_[:, None] - ft_[None, :]) % period), axis=-1)
 
         # Create (bounded) variables
         if weight_quantization is None:
             # Continuous variables
-            weights_gp = model_gp.addMVar(shape=self.num_inputs, lb=weight_bound, ub=weight_bound)
+            weights_gp = model_gp.addMVar(shape=self.num_inputs, lb=-weight_bound, ub=weight_bound)
 
             input_potential = lambda t_, ift_: np.nansum(self.input_kernel((t_[:, None, None] - ift_[None, :, :]) % period), axis=-1)
             input_potential_prime = lambda t_, ift_: np.nansum(
@@ -285,9 +287,12 @@ class Neuron:
                 axis=-1,
             )
         else:
+            if weight_quantization < 2:
+                raise ValueError("The weight quantization must be at least 2.")
+            
             # Quantized variables
             dweight = 2 * weight_bound / (weight_quantization - 1)
-            weights_gp = model_gp.addMVar(shape=self.num_inputs, lb=weight_bound / dweight, ub=weight_bound / dweight, vtype=gp.GRB.INTEGER)
+            weights_gp = model_gp.addMVar(shape=self.num_inputs, lb=-weight_bound / dweight, ub=weight_bound / dweight, vtype=gp.GRB.INTEGER)
 
             input_potential = lambda t_, ift_: dweight * np.nansum(self.input_kernel((t_[:, None, None] - ift_[None, :, :]) % period), axis=-1)
             input_potential_prime = lambda t_, ift_: dweight * np.nansum(
@@ -312,33 +317,26 @@ class Neuron:
             model_gp.setObjective(objective, GRB.MINIMIZE)
 
         # Add constraints
+        sampling_times = np.arange(0, period, sampling_res)
+
         for firing_times, input_firing_times in zip(firing_times_s, input_firing_times_s):
             max_num_spikes = max([fts.size for fts in input_firing_times])
             input_firing_times = np.vstack([np.pad(fts, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
 
-            # equality constraints (note: the equality constraints can be turned to inequality constraints)
-            # model_gp.addConstr(input_potential(firing_times) @ weights_gp >= adaptive_threshold(firing_times))
-            model_gp.addConstr(input_potential(firing_times, input_firing_times) @ weights_gp >= self.nominal_threshold)
-
-            sampling_times = np.arange(0, period, sampling_res)
-            dist_left = np.min((sampling_times[None, :] - firing_times[:, None]) % period, axis=0)
-            dist_right = np.min((firing_times[:, None] - sampling_times[None, :]) % period, axis=0)
-
-            # upper bound before firing times, i.e., if dist_right < firing_area and dist_left > 1.0
-            model_gp.addConstr(input_potential(sampling_times[(dist_left > 1.0) & (dist_right <= firing_area)], input_firing_times) @ weights_gp <= self.nominal_threshold - 1e-6)
-            # sampling_times_ub_1 = (firing_times[:, None] + np.arange(-firing_area, 0, sampling_res)[None, :]).reshape(-1)
-            # model_gp.addConstr(input_potential(sampling_times_ub_1, input_firing_times) @ weights_gp <= adaptive_threshold(sampling_times_ub_1, firing_times) - 1e-6)
-
-            # margin far from every firing times
-            model_gp.addConstr(input_potential(sampling_times[(dist_left > 1.0) & (dist_right > firing_area)], input_firing_times) @ weights_gp <= self.nominal_threshold - margin_min - 1e-6)
-            # sampling_times_ub_2 = sampling_times[np.all((dist_right > 1.0) & (dist_left > firing_area), axis=0)]
-            # #model_gp.addConstr(input_potential(sampling_times_ub_2, input_firing_times) @ weights_gp <= adaptive_threshold(sampling_times_ub_2, firing_times) - margin_min - 1e-9)
-            # model_gp.addConstr(input_potential(sampling_times_ub_2, input_firing_times) @ weights_gp <= self.nominal_threshold - margin_min - 1e-9)
+            if firing_times.size > 0:
+                dist_left = np.min((sampling_times[None, :] - firing_times[:, None]) % period, axis=0)
+                dist_right = np.min((firing_times[:, None] - sampling_times[None, :]) % period, axis=0)
+                # Lower bounded by the firing threshold at every firing times (most general case)
+                model_gp.addConstr(input_potential(firing_times, input_firing_times) @ weights_gp >= self.nominal_threshold)
+                # Upper bounded by the firing threshold right before every firing times, i.e., dist_left > 1.0 (no refractory period) and dist_right <= firing_area 
+                model_gp.addConstr(input_potential(sampling_times[(dist_left > 1.0) & (dist_right <= firing_area)], input_firing_times) @ weights_gp <= self.nominal_threshold - 1e-6)
+                # Upper bounded by the firing threshold minus some margin elsewhere, i.e., dist_left > 1.0 (no refractory period) and dist_right > firing_area
+                model_gp.addConstr(input_potential(sampling_times[(dist_left > 1.0) & (dist_right > firing_area)], input_firing_times) @ weights_gp <= self.nominal_threshold - margin_min - 1e-6)
+                # Lower bounded by some minimum slope in the vicinity of the firing times, i.e., dist_left <= firing_area or dist_right <= firing_area
+                model_gp.addConstr(input_potential_prime(sampling_times[(dist_left <= firing_area) | (dist_right <= firing_area)], input_firing_times) @ weights_gp >= slope_min + 1e-6)
+            else:
+                model_gp.addConstr(input_potential(sampling_times, input_firing_times) @ weights_gp <= self.nominal_threshold - margin_min - 1e-6)
             
-            # lower bound around every firing times
-            # sampling_times_lb = (firing_times[:, None] + np.arange(-firing_area, firing_area + sampling_res, sampling_res)[None, :]).reshape(-1)
-            model_gp.addConstr(input_potential_prime(sampling_times[(dist_left <= firing_area) | (dist_right <= firing_area)], input_firing_times) @ weights_gp >= slope_min + 1e-6)
-        
         # Optimize
         model_gp.optimize()
 
@@ -354,94 +352,6 @@ class Neuron:
 
         model_gp.dispose()
 
-    # def optimize_weights_many(
-    #     self,
-    #     firing_times_many: List[np.ndarray],
-    #     input_firing_times_many: List[List[np.ndarray]],
-    #     period: float,
-    #     template_dict: Dict,
-    #     weights_dict: Optional[Dict] = None,
-    #     res: Optional[float] = 1e-1,
-    # ):
-    #     """Optimize the weights to robustly reproduce many prescribed spike trains when fed with specific input spike trains.
-
-    #     Args:
-    #         firing_times_many (list of np.ndarray): the spike trains to reproduce.
-    #         input_firing_times_many (list of lists of np.ndarrays): the input spike trains.
-    #         period (float): the period of the spike trains [in ms].
-    #         weights_lim (tuple of floats): the lower and upper bounds on the weights.
-    #         eps (float): the firing surrounding parameter [in ms].
-    #         template_dict["margin_min"] (float): the minimum different between the neuron adaptive threshold and potential not in the surrounding of any firing time.
-    #         template_dict["slope_min"] (float): the minimum template_dict["slope_min"] in the surrounding of any firing time.
-    #         res (float, optional): _description_. Defaults to 1e-1.
-    #         regularizer (str, optional): _description_. Defaults to None.
-
-    #     Raises:
-    #         NotImplementedError: if the regularizer is not None, "l1", or "l2".
-    #     """
-    #     model_gp = gp.Model()
-    #     model_gp.setParam("OutputFlag", 0)
-
-    #     # Create variables
-    #     weights_gp = model_gp.addMVar(shape=self.num_inputs, lb=weights_lim[0], ub=weights_lim[1])
-
-    #     # Set objective
-    #     if regularizer is None:
-    #         objective = 0.0
-    #     elif regularizer == "l1":
-    #         l1_norm = model_gp.addVar()
-    #         model_gp.addConstr(l1_norm == gp.norm(weights_gp, 1))
-    #         objective = l1_norm
-    #     elif regularizer == "l2":
-    #         l2_norm = model_gp.addVar()
-    #         model_gp.addConstr(l2_norm == gp.norm(weights_gp, 2))
-    #         objective = l2_norm
-    #     else:
-    #         raise NotImplementedError
-    #     model_gp.setObjective(objective, GRB.MINIMIZE)
-
-    #     # Add constraints
-    #     for firing_times, input_firing_times in zip(firing_times_many, input_firing_times_many):
-    #         max_num_spikes = max([fts.size for fts in input_firing_times])
-    #         input_firing_times = np.vstack([np.pad(fts, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
-
-    #         input_potential = lambda t_: np.nansum(self.input_kernel((t_[:, None, None] - input_firing_times[None, :, :]) % period), axis=-1)
-    #         input_potential_prime = lambda t_: np.nansum(
-    #             self.input_kernel_prime((t_[:, None, None] - input_firing_times[None, :, :]) % period),
-    #             axis=-1,
-    #         )
-    #         adaptive_threshold = lambda t_: self.nominal_threshold + np.nansum(self.refractory_kernel((t_[:, None] - firing_times[None, :]) % period), axis=-1)
-
-    #         # equality constraints
-    #         model_gp.addConstr(input_potential(firing_times) @ weights_gp == adaptive_threshold(firing_times))
-
-    #         # upper bound constraints
-    #         # 1. upper bound before firing times
-    #         sampling_times_ub_1 = (firing_times[:, None] + np.arange(-eps, 0, res)[None, :]).reshape(-1)
-    #         model_gp.addConstr(input_potential(sampling_times_ub_1) @ weights_gp <= adaptive_threshold(sampling_times_ub_1) - 1e-6)
-    #         # 2. upper bound faraway from all firing times
-    #         sampling_times = np.arange(0, period, res)
-    #         dist_right, dist_left = (sampling_times[None, :] - firing_times[:, None]) % period, (firing_times[:, None] - sampling_times[None, :]) % period
-    #         sampling_times_ub_2 = sampling_times[np.all((dist_right > 1.0) & (dist_left > eps), axis=0)]
-    #         model_gp.addConstr(input_potential(sampling_times_ub_2) @ weights_gp <= adaptive_threshold(sampling_times_ub_2) - template_dict["margin_min"] - 1e-6)
-
-    #         # lower bound constraints
-    #         sampling_times_lb = (firing_times[:, None] + np.arange(-eps, eps + res, res)[None, :]).reshape(-1)
-    #         model_gp.addConstr(input_potential_prime(sampling_times_lb) @ weights_gp >= template_dict["slope_min"] + 1e-6)
-
-    #     # Optimize
-    #     model_gp.optimize()
-
-    #     if model_gp.status is GRB.OPTIMAL:
-    #         self.status = "optimal"
-    #         self.weights = weights_gp.X
-    #     else:
-    #         self.status = "infeasible"
-    #         self.weights = weights_gp.X
-    #         # self.weights = np.full(self.num_inputs, np.nan)
-
-    #     model_gp.dispose()
-
     def sim(
         self,
         tmax: float,
@@ -452,9 +362,9 @@ class Neuron:
         """Simulate the neuron on a given time range.
 
         Args:
-            tmax (float): time range upper bound [in tau_min].
-            dt (float): time step [in tau_min].
-            input_firing_times (list of np.ndarray): the (delayed) input firing times [in tau_min].
+            tmax (float): time range upper bound [in tau_0].
+            dt (float): time step [in tau_0].
+            input_firing_times (list of np.ndarray): the (delayed) input firing times [in tau_0].
             std_threshold (float, optional): firing threshold nominal value standard deviation. Defaults to 0.0.
 
         Raises:
