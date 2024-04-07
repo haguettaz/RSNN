@@ -208,11 +208,10 @@ class Neuron:
             model_gp.setObjective(objective, GRB.MINIMIZE)
 
         # Add constraints
-        max_num_spikes = max([fts.size for fts in input_firing_times])
-        input_firing_times = np.vstack([np.pad(ft, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
-
         sampling_times = np.arange(0, period, sampling_res)
-        
+        max_num_spikes = max([ifts.size for ifts in input_firing_times])
+        input_firing_times = np.vstack([np.pad(ifts, (max_num_spikes - ifts.size, 0), constant_values=np.nan) for ifts in input_firing_times])
+
         if firing_times.size > 0:
             dist_left = np.min((sampling_times[None, :] - firing_times[:, None]) % period, axis=0)
             dist_right = np.min((firing_times[:, None] - sampling_times[None, :]) % period, axis=0)
@@ -320,8 +319,8 @@ class Neuron:
         sampling_times = np.arange(0, period, sampling_res)
 
         for firing_times, input_firing_times in zip(firing_times_s, input_firing_times_s):
-            max_num_spikes = max([fts.size for fts in input_firing_times])
-            input_firing_times = np.vstack([np.pad(fts, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
+            max_num_spikes = max([ifts.size for ifts in input_firing_times])
+            input_firing_times = np.vstack([np.pad(ifts, (max_num_spikes - ifts.size, 0), constant_values=np.nan) for ifts in input_firing_times])
 
             if firing_times.size > 0:
                 dist_left = np.min((sampling_times[None, :] - firing_times[:, None]) % period, axis=0)
@@ -373,9 +372,8 @@ class Neuron:
         if dt > np.min(self.delays):
             raise ValueError("The simulation time step must be smaller than the minimum delay.")
 
-        # note: assume no self-loop
-        max_num_spikes = max([fts.size for fts in input_firing_times])
-        input_firing_times = np.vstack([np.pad(fts, (max_num_spikes - fts.size, 0), constant_values=np.nan) for fts in input_firing_times])
+        max_num_spikes = max([ifts.size for ifts in input_firing_times])
+        input_firing_times = np.vstack([np.pad(ifts, (max_num_spikes - ifts.size, 0), constant_values=np.nan) for ifts in input_firing_times])
 
         firing_threshold = np.random.normal(self.nominal_threshold, std_threshold)
 
