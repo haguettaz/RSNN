@@ -20,8 +20,6 @@ class Neuron:
         num_inputs (int): the number of inputs
         input_beta (float): the input kernel time constant (in ms)
         nominal_threshold (float): the nominal firing threshold
-        absolute_refractory (float): the absolute refractory period (in ms)
-        relative_refractory (float): the relative refractory period (in ms)
         sources (np.ndarray, optional): the input sources. Defaults to np.full(num_inputs, np.nan).
         delays (np.ndarray, optional): the input delays. Defaults to np.full(num_inputs, np.nan).
         weights (np.ndarray, optional): the input weights. Defaults to np.full(num_inputs, np.nan).
@@ -79,28 +77,6 @@ class Neuron:
         if nominal_threshold <= 0:
             raise ValueError("The nominal firing threshold must be positive.")
         self.nominal_threshold = nominal_threshold
-
-        # if relative_refractory < 0:
-        #     raise ValueError("The relative refractory period must be positive.")
-        # self.relative_refractory = relative_refractory
-
-        # if absolute_refractory < 0:
-        #     raise ValueError("The absolute refractory period must be positive.")
-        # 1.0 = absolute_refractory
-
-        # if relative_refractory > 0:
-        #     self.refractory_kernel = lambda t_: np.select([t_ > absolute_refractory, t_ > 0], [np.exp(-(t_ - absolute_refractory) / relative_refractory), np.inf], 0)
-        #     self.refractory_kernel_prime = lambda t_: np.select(
-        #         [t_ > absolute_refractory, t_ > 0],
-        #         [-np.exp(-(t_ - absolute_refractory) / relative_refractory) / relative_refractory, np.inf],
-        #         0,
-        #     )
-        # else:
-        #     self.refractory_kernel = lambda t_: np.select([t_ > absolute_refractory, t_ > 0], [0, np.inf], 0)
-        #     self.refractory_kernel_prime = lambda t_: np.select([t_ > absolute_refractory, t_ > 0], [0, np.inf], 0)
-
-        # self.refractory_kernel = lambda t_: 1e9 * (t_ <= 1) * (t_ > 0)
-        # self.refractory_kernel_prime = lambda t_: np.select([t_ > 1.0, t_ > 0], [0, np.inf], 0)
 
         if sources is None:
             self.sources = np.full(self.num_inputs, np.nan)
@@ -164,8 +140,6 @@ class Neuron:
 
         model_gp = gp.Model()
         model_gp.setParam("OutputFlag", 0)
-
-        # adaptive_threshold = lambda t_, ft_: self.nominal_threshold + np.nansum(self.refractory_kernel((t_[:, None] - ft_[None, :]) % period), axis=-1)
 
         # Create (bounded) variables
         if weight_quantization is None:
@@ -357,6 +331,7 @@ class Neuron:
         dt: float,
         input_firing_times: List[np.ndarray],
         std_threshold: Optional[float] = 0.0,
+        rng: Optional[np.random.Generator] = None,
     ):
         """Simulate the neuron on a given time range.
 
@@ -369,17 +344,24 @@ class Neuron:
         Raises:
             ValueError: if the time step is larger than the minimum delay of any neuron.
         """
+            
         if dt > np.min(self.delays):
             raise ValueError("The simulation time step must be smaller than the minimum delay.")
+
+        if rng is None:
+            rng = np.random.default_rng()
 
         max_num_spikes = max([ifts.size for ifts in input_firing_times])
         input_firing_times = np.vstack([np.pad(ifts, (max_num_spikes - ifts.size, 0), constant_values=np.nan) for ifts in input_firing_times])
 
-        firing_threshold = np.random.normal(self.nominal_threshold, std_threshold)
+        if self.firing_threshold is None:
+            self.firing_threshold = rng.normal(self.nominal_threshold, std_threshold)
 
         potential = lambda t_: np.inner(self.weights, np.nansum(self.input_kernel((t_ - input_firing_times)), axis=-1))
-        adaptive_threshold = lambda t_: firing_threshold + np.nansum(self.refractory_kernel((t_ - self.firing_times)), axis=-1)
-        fun = lambda t_: potential(t_) - adaptive_threshold(t_)
+        fun = lambda t_: potential(t_) - self.firing_threshold
+        
+        # adaptive_threshold = lambda t_: firing_threshold + np.nansum(self.refractory_kernel((t_ - self.firing_times)), axis=-1)
+        # fun = lambda t_: potential(t_) - adaptive_threshold(t_)
 
         if self.firing_times.size > 0:
             t0 = np.max(self.firing_times) + 1.0
@@ -396,6 +378,6 @@ class Neuron:
                 self.firing_times = np.append(self.firing_times, brentq(fun, t - dt, t))
 
                 # update the firing threshold
-                firing_threshold = np.random.normal(self.nominal_threshold, std_threshold)
+                self.firing_threshold = rng.normal(self.nominal_threshold, std_threshold)
 
         self.firing_times = self.firing_times[self.firing_times > -np.inf]

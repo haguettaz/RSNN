@@ -40,8 +40,8 @@ class Network:
         dt: float,
         std_threshold: Optional[float]=0.0,
         sim_indices: Optional[Iterable[int]]=None,
-        nmax: Optional[int] = 25,
         tol: Optional[float] = 1e-4,
+        rng: Optional[np.random.Generator]=None
     ):
         """Simulate the network on a given time range.
 
@@ -57,6 +57,7 @@ class Network:
             ValueError: if the effect of the (worst) nmax-th latest spike is not negligible.
             ValueError: if the number of spikes of any neuron is larger than nmax, at the initialization.
         """
+
         if sim_indices is None:
             sim_neurons = self.neurons
         else:
@@ -65,11 +66,10 @@ class Network:
         for neuron in sim_neurons:
             if dt > np.min(neuron.delays):
                 raise ValueError("The simulation time step must be smaller than the minimum delay.")
+        
+        if rng is None:
+            rng = np.random.default_rng()
 
-            # tmp = neuron.input_kernel(neuron.absolute_refractory * (nmax) - np.max(neuron.delays))
-            # if tmp > tol:
-            #     raise ValueError(f"The effect of the {nmax}th latest spike is not negligible ({tmp}>{tol}).")
-            
         tmax = t0 + duration
         
         for neuron in sim_neurons:
@@ -99,7 +99,7 @@ class Network:
             neuron.input_firing_times = np.vstack(input_firing_times)
 
             if neuron.firing_threshold is None:
-                neuron.firing_threshold = np.random.normal(neuron.nominal_threshold, std_threshold)
+                neuron.firing_threshold = rng.normal(neuron.nominal_threshold, std_threshold)
 
             neuron.potential = lambda t_: np.inner(
                 neuron.weights, np.nansum(neuron.input_kernel((t_ - neuron.input_firing_times)), axis=-1)
@@ -128,7 +128,7 @@ class Network:
                     n_.input_firing_times[k_] = np.append(n_.input_firing_times[k_][1:], t0 + n_.delays[k_])
 
                 # update the firing threshold
-                neuron.firing_threshold = np.random.normal(neuron.nominal_threshold, std_threshold)
+                neuron.firing_threshold = rng.normal(neuron.nominal_threshold, std_threshold)
         
         for t in tqdm(np.arange(t0, tmax, dt), desc="Network simulation"):
             for neuron in sim_neurons:
@@ -149,4 +149,4 @@ class Network:
                         n_.input_firing_times[k_] = np.append(n_.input_firing_times[k_][1:], ft + n_.delays[k_])
 
                     # update the firing threshold
-                    neuron.firing_threshold = np.random.normal(neuron.nominal_threshold, std_threshold)
+                    neuron.firing_threshold = rng.normal(neuron.nominal_threshold, std_threshold)

@@ -12,19 +12,20 @@ from rsnn.spike_train.sampler import sample_spike_trains
 from rsnn.utils.analysis import get_phis
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
-FIRING_RATE = 0.2 # in number of spikes / tau_0 (outside guard period)
+NUM_INPUTS = 500
+
+PERIOD = 100 # in tau_0
+FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
+
 DELAY_MIN = 0.1  # in tau_0
 
-PERIOD = 50 # in tau_0
-FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 NUM_CYCLES = 10
+DT = 0.01
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
     parser.add_argument("--exp_idx", type=int)
-    parser.add_argument("--num_inputs", type=int, default=400)
-    parser.add_argument("--num_neurons", type=int, default=100)
-    # parser.add_argument("--similarity", type=str) # low or high
+    parser.add_argument("--num_neurons", type=int, default=1000)
     parser.add_argument("--delay_max", type=int, default=10)
     parser.add_argument("--slope_min", type=int, default=2)
     parser.add_argument("--weight_bound", type=int, default=20) # in %
@@ -39,13 +40,13 @@ if __name__ == "__main__":
 
     if args.l1:
         weight_regularization = "l1"
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1",f"exp_{args.exp_idx}")
     elif args.l2:
         weight_regularization = "l2"
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2",f"exp_{args.exp_idx}")
     else:
         weight_regularization = None
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}",f"exp_{args.exp_idx}")
         
     if os.path.exists(os.path.join(exp_dir, "results.csv")):
         print(f"Experiment already exists at",  os.path.join(exp_dir, "results.csv"), flush=True)
@@ -55,11 +56,13 @@ if __name__ == "__main__":
         os.makedirs(exp_dir)
         print(f"Created directory {exp_dir}", flush=True)
 
+    rng = np.random.default_rng(seed=args.exp_idx)
+
     if os.path.exists(os.path.join(exp_dir, "spike_trains.pkl")):
         spike_trains = load_object_from_file(os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Loaded spike trains from", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
     else:
-        spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons)
+        spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons, rng)
         save_object_to_file(spike_trains, os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Spike trains saved at", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
 
@@ -75,9 +78,9 @@ if __name__ == "__main__":
             [
                 Neuron(
                     neuron_idx,
-                    args.num_inputs,
-                    sources=np.random.choice(args.num_neurons, args.num_inputs),
-                    delays=np.random.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs),
+                    NUM_INPUTS,
+                    sources=rng.choice(args.num_neurons, NUM_INPUTS),
+                    delays=rng.uniform(low=DELAY_MIN, high=args.delay_max, size=NUM_INPUTS),
                 )
                 for neuron_idx in range(args.num_neurons)
             ]
@@ -107,7 +110,7 @@ if __name__ == "__main__":
 
     # Empirical temporal stability
     list_of_dict = []
-    for std_threshold in [0.05, 0.1, 0.15]:
+    for std_threshold in [0.05, 0.1, 0.15, 0.2]:
         # if os.path.exists(os.path.join(exp_dir, f"network_{std_threshold}.pkl")):
         #     print(f"Experiment already exists at",  os.path.join(exp_dir, f"network_{std_threshold}.pkl"), flush=True)
         #     continue
@@ -117,11 +120,8 @@ if __name__ == "__main__":
             neuron.firing_times = spike_trains[neuron.idx] - PERIOD
             neuron.firing_threshold = None
 
-        # network.precision = []
-        # network.recall = []
-
-        for i in range(NUM_CYCLES): # 10 or 50?
-            network.sim(i*PERIOD, PERIOD, 0.01, std_threshold, range(args.num_neurons))
+        for i in range(NUM_CYCLES):
+            network.sim(i*PERIOD, PERIOD, DT, std_threshold, rng=rng)
         
             precision, recall = multi_channel_correlation(
                             [spike_trains[neuron.idx] for neuron in network.neurons],
@@ -130,6 +130,7 @@ if __name__ == "__main__":
                             PERIOD,
                         )
             print(f"std_threshold: {std_threshold}, cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
+            
             list_of_dict.append(
                 {
                     "exp_idx": args.exp_idx,
@@ -141,11 +142,6 @@ if __name__ == "__main__":
                     "phi1": mod_phis[-2],
                 }
             )
-            # network.precision.append(precision)
-            # network.recall.append(recall)
-
-        # save_object_to_file(network, os.path.join(exp_dir, f"network_{std_threshold}.pkl"))
-        # print(f"Experiment saved at", os.path.join(exp_dir, f"network_{std_threshold}.pkl"), flush=True)
 
     df = pd.DataFrame(list_of_dict)
     df.to_csv(os.path.join(exp_dir, "results.csv"), index=False)

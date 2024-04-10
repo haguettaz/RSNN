@@ -19,16 +19,12 @@ if __name__ == "__main__":
     parser.add_argument("--num_exp", type=int, default=1000)
     parser.add_argument("--num_neurons", type=int, default=0) # 0 => num_neurons = num_inputs
     parser.add_argument("--num_inputs", type=int)
-    # parser.add_argument("--similarity", type=str) # low or high
     parser.add_argument("--delay_max", type=int, default=10)
-    parser.add_argument("--weight_bound", type=int, default=20)  # [in %]
-    parser.add_argument("--period_min", type=int, default=20)
+    parser.add_argument("--period_min", type=int, default=20) # in %
+
 
     args = parser.parse_args()
     print(args, flush=True)
-
-    # if not args.similarity in {"low", "high"}:
-    #     raise ValueError("similarity should be one of low or high")
 
     exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.weight_bound}")
     if not os.path.exists(exp_dir):
@@ -37,6 +33,8 @@ if __name__ == "__main__":
     elif os.path.exists(os.path.join(exp_dir, "results.csv")):
         print("Experiment already done", flush=True)
         sys.exit(0)
+
+    rng = np.random.default_rng()
     
     list_of_dict = []
 
@@ -51,10 +49,10 @@ if __name__ == "__main__":
             if args.num_neurons < 1:
                 neuron.sources = np.arange(args.num_inputs)
             else:
-                neuron.sources = np.random.choice(args.num_neurons, args.num_inputs)
-            neuron.delays = np.random.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs)
+                neuron.sources = rng.choice(args.num_neurons, args.num_inputs)
+            neuron.delays = rng.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs)
 
-            firing_times = sample_spike_trains(period, FIRING_RATE, 1)[0]
+            firing_times = sample_spike_trains(period, FIRING_RATE)
 
             spike_trains = sample_spike_trains(period, FIRING_RATE, args.num_inputs if args.num_neurons < 1 else args.num_neurons)
             input_firing_times = [(spike_trains[l] + d).reshape(-1) for l, d in zip(neuron.sources, neuron.delays)]
