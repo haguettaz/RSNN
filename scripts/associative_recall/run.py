@@ -13,10 +13,10 @@ from rsnn.spike_train.sampler import (sample_jittered_spike_trains,
                                       sample_spike_trains)
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
-NUM_NEURONS = 1000
+NUM_NEURONS = 200
 NUM_INPUTS = 500
 
-PERIOD = 100  # in tau_0
+PERIOD = 50  # in tau_0
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 DELAY_MIN = 0.1  # in tau_0

@@ -17,7 +17,7 @@ from rsnn.utils.utils import load_object_from_file, save_object_to_file
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 DELAY_MIN = 0.1  # in tau_0
 
-PERIOD = 25  # in tau_0
+PERIOD = 50  # in tau_0
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 NUM_PATTERNS = 2

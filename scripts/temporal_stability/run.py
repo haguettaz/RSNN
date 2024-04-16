@@ -14,7 +14,7 @@ from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
 NUM_INPUTS = 500
 
-PERIOD = 100 # in tau_0
+PERIOD = 50 # in tau_0
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 DELAY_MIN = 0.1  # in tau_0
@@ -25,7 +25,7 @@ DT = 0.01
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
     parser.add_argument("--exp_idx", type=int)
-    parser.add_argument("--num_neurons", type=int, default=1000)
+    parser.add_argument("--num_neurons", type=int, default=200)
     parser.add_argument("--delay_max", type=int, default=10)
     parser.add_argument("--slope_min", type=int, default=2)
     parser.add_argument("--weight_bound", type=int, default=20) # in %
@@ -111,6 +111,8 @@ if __name__ == "__main__":
     # Empirical temporal stability
     list_of_dict = []
     for std_threshold in [0.05, 0.1, 0.15, 0.2]:
+        print()
+        print(f"std_threshold: {std_threshold}", flush=True)
         # if os.path.exists(os.path.join(exp_dir, f"network_{std_threshold}.pkl")):
         #     print(f"Experiment already exists at",  os.path.join(exp_dir, f"network_{std_threshold}.pkl"), flush=True)
         #     continue
@@ -119,6 +121,27 @@ if __name__ == "__main__":
             # perfect initialization
             neuron.firing_times = spike_trains[neuron.idx] - PERIOD
             neuron.firing_threshold = None
+
+        precision, recall = multi_channel_correlation(
+                            [spike_trains[neuron.idx] for neuron in network.neurons],
+                            [neuron.firing_times for neuron in network.neurons],
+                            -PERIOD,
+                            PERIOD,
+                        )
+        
+        print(f"cycle: -1, precision: {precision}, recall: {recall}", flush=True)
+        
+        list_of_dict.append(
+            {
+                "exp_idx": args.exp_idx,
+                "std_threshold": std_threshold,
+                "cycle": -1,
+                "precision": precision,
+                "recall": recall,
+                "phi0": mod_phis[-1],
+                "phi1": mod_phis[-2],
+            }
+        )
 
         for i in range(NUM_CYCLES):
             network.sim(i*PERIOD, PERIOD, DT, std_threshold, rng=rng)
@@ -129,7 +152,7 @@ if __name__ == "__main__":
                             i * PERIOD,
                             PERIOD,
                         )
-            print(f"std_threshold: {std_threshold}, cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
+            print(f"cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
             
             list_of_dict.append(
                 {

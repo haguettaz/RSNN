@@ -374,8 +374,15 @@ class Neuron:
                 continue
             
             if fun(t) > 0:
+                t_prev = np.maximum(t - dt, self.firing_times[-1] + 1.0)
+                if fun(t_prev) > 0:
+                    # print(f"warning at t:{t} for neuron {neuron.idx} (last spikes at {neuron.firing_times[-1]})")
+                    ft = t_prev
+                else:
+                    ft = brentq(fun, t_prev, t)
+
                 # determine the exact firing times
-                self.firing_times = np.append(self.firing_times, brentq(fun, t - dt, t))
+                self.firing_times = np.append(self.firing_times, ft)
 
                 # update the firing threshold
                 self.firing_threshold = rng.normal(self.nominal_threshold, std_threshold)

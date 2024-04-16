@@ -97,11 +97,11 @@ def multi_channel_correlation(
     tmp_spike_trains = []
     for nominal_spike_train, spike_train in zip(nominal_spike_trains, spike_trains):
         if not check_refractoriness_periodicity(nominal_spike_train, period):
-            raise ValueError("The nominal spike train does not satisfy the refractory condition.")
+            raise ValueError(f"The nominal spike train {nominal_spike_train} does not satisfy the refractory and periodicity conditions.")
 
         tmp_spike_train = np.sort(spike_train[(spike_train >= t0 - 1) & (spike_train < t0 + period)])
         if not check_refractoriness(tmp_spike_train):
-            raise ValueError("The spike train does not satisfy the refractory condition.")
+            raise ValueError(f"The spike train {tmp_spike_train} does not satisfy the refractory condition.")
         
         # if the first and last firing times are too close, i.e., they periodically overlap violating the refractory period, remove the last one
         if tmp_spike_train.size > 1 and np.abs(tmp_spike_train[-1] - period - tmp_spike_train[0]) < 1.0:
@@ -128,25 +128,25 @@ def multi_channel_correlation(
     precision = np.zeros_like(lags)
     recall = np.zeros_like(lags)
 
-    for nominal_spike_train, spike_train in zip(nominal_spike_trains, spike_trains):
+    for nominal_spike_train, spike_train in zip(nominal_spike_trains, tmp_spike_trains):
         # Both are empty
-        if nominal_spike_train.size == 0 and tmp_spike_train.size == 0:
+        if nominal_spike_train.size == 0 and spike_train.size == 0:
             precision += 1.0  # contribute to every lag
             recall += 1.0  # contribute to every lag
             continue
 
         # Bad precision
-        if nominal_spike_train.size == 0 and tmp_spike_train.size > 0:
+        if nominal_spike_train.size == 0 and spike_train.size > 0:
             recall += 1.0
             continue
 
         # Bad recall
-        if nominal_spike_train.size > 0 and tmp_spike_train.size == 0:
+        if nominal_spike_train.size > 0 and spike_train.size == 0:
             precision += 1.0
             continue
 
-        corr = kernel(dist_mod(tmp_spike_train[None, :, None] - lags[None, None, :], nominal_spike_train[:, None, None], period)).sum(axis=(0, 1))
-        precision += corr / tmp_spike_train.size
+        corr = kernel(dist_mod(spike_train[None, :, None] - lags[None, None, :], nominal_spike_train[:, None, None], period)).sum(axis=(0, 1))
+        precision += corr / spike_train.size
         recall += corr / nominal_spike_train.size
 
     if return_min:

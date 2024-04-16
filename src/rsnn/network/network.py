@@ -77,7 +77,7 @@ class Network:
             tmp = -neuron.input_beta * lambertw(-tol/np.exp(1), k=-1).real            
             for source, delay in zip(neuron.sources, neuron.delays):
                 # free neurons can influence from the past (tmin) -> the number of spikes is determined using lambertw
-                if source in sim_indices:
+                if self.neurons[source] in sim_neurons:
                     nmax = max(nmax, int(tmp + delay) + 1)
                 # controllable neurons can influence from the past (tmin) and the future (tmax) but with a fixed number of spikes
                 else:
@@ -112,9 +112,9 @@ class Network:
 
         targets = {neuron: [] for neuron in self.neurons}
         for neuron in sim_neurons:
-            for k, src in enumerate(neuron.sources):
-                if src in sim_indices:
-                    targets[self.neurons[src]].append((neuron, k))
+            for k, source in enumerate(neuron.sources):
+                if self.neurons[source] in sim_neurons:
+                    targets[self.neurons[source]].append((neuron, k))
 
         for neuron in sim_neurons:
             if neuron.firing_times[-1] + 1.0 >= t0:
@@ -136,11 +136,12 @@ class Network:
                     continue
 
                 if neuron.fun(t) > 0:
-                    if neuron.fun(t-dt) > 0:
+                    t_prev = np.maximum(t - dt, neuron.firing_times[-1] + 1.0)
+                    if neuron.fun(t_prev) >= 0:
                         # print(f"warning at t:{t} for neuron {neuron.idx} (last spikes at {neuron.firing_times[-1]})")
-                        ft = neuron.firing_times[-1] + 1.0 + 1e-6
+                        ft = t_prev
                     else:
-                        ft = brentq(neuron.fun, t - dt, t)
+                        ft = brentq(neuron.fun, t_prev, t)
                     
                     neuron.firing_times = np.append(neuron.firing_times, ft)
 

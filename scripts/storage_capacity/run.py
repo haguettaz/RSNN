@@ -14,6 +14,8 @@ from rsnn.spike_train.sampler import sample_spike_trains
 FIRING_RATE = 0.2 # in number of spikes / tau_0 (outside guard period)
 DELAY_MIN = 0.1  # in tau_0
 
+WEIGHT_BOUND = 0.2
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Storage Capacity Simulation")
     parser.add_argument("--num_exp", type=int, default=1000)
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args, flush=True)
 
-    exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.weight_bound}")
+    exp_dir = os.path.join("data", f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}")
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
         print(f"Created directory {exp_dir}", flush=True)
@@ -52,12 +54,11 @@ if __name__ == "__main__":
                 neuron.sources = rng.choice(args.num_neurons, args.num_inputs)
             neuron.delays = rng.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs)
 
-            firing_times = sample_spike_trains(period, FIRING_RATE)
-
+            spike_train = sample_spike_trains(period, FIRING_RATE)
             spike_trains = sample_spike_trains(period, FIRING_RATE, args.num_inputs if args.num_neurons < 1 else args.num_neurons)
-            input_firing_times = [(spike_trains[l] + d).reshape(-1) for l, d in zip(neuron.sources, neuron.delays)]
+            input_spike_trains = [(spike_trains[l] + d).reshape(-1) for l, d in zip(neuron.sources, neuron.delays)]
             
-            neuron.optimize_weights(firing_times, input_firing_times, period, weight_bound=args.weight_bound/100)
+            neuron.optimize_weights(spike_train, input_spike_trains, period, weight_bound=WEIGHT_BOUND)
             
             if neuron.status != "optimal":
                 num_errors += 1
@@ -71,7 +72,6 @@ if __name__ == "__main__":
                             "num_inputs": args.num_inputs,
                             "period": period,
                             "delay_max": args.delay_max,
-                            "weight_bound": args.weight_bound/100,
                             "num_errors": num_errors
                         })
         period += 5

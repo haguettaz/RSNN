@@ -37,25 +37,27 @@ def expected_num_spikes(period: float, firing_rate: float) -> float:
     return np.inner(ns, pns)
 
 
-def check_refractoriness(firing_times: np.ndarray) -> bool:
+def check_refractoriness(firing_times: np.ndarray, tol:float=1e-6) -> bool:
     """
     Returns a boolean indicating whether the spike train satisfies the refractory condition.
 
     Args:
         firing_times (np.ndarray): the spike times in [tau_0].
+        tol (float, optional): the tolerance for the refractory condition. Defaults to 1e-6.
 
     Returns:
         (bool): the boolean indicating satisfaction of the refractory condition.
     """
-    return (firing_times.size < 2) or np.all(np.diff(np.sort(firing_times)) > 1.0)
+    return (firing_times.size < 2) or np.all(np.diff(np.sort(firing_times)) > 1.0 - tol)
         
-def check_refractoriness_periodicity(firing_times: np.ndarray, period:float) -> bool:
+def check_refractoriness_periodicity(firing_times: np.ndarray, period:float, tol:float=1e-6) -> bool:
     """
     Returns a boolean indicating whether the spike train satisfies the refractory condition.
 
     Args:
         firing_times (np.ndarray): the spike times in [tau_0].
         period (float): the period of the spike train in [tau_0].
+        tol (float, optional): the tolerance for the refractory condition. Defaults to 1e-6.
 
     Returns:
         (bool): the boolean indicating satisfaction of the refractory condition.
@@ -68,4 +70,4 @@ def check_refractoriness_periodicity(firing_times: np.ndarray, period:float) -> 
     
     tmp = np.sort(firing_times)
         
-    return (tmp[-1] - tmp[0] < period) and (np.abs(tmp[-1] - period - tmp[0]) > 1.0) and np.all(np.diff(tmp) > 1.0)
+    return (tmp[-1] - tmp[0] < period) and (np.abs(tmp[-1] - period - tmp[0]) > 1.0 - tol) and np.all(np.diff(tmp) > 1.0 - tol)
