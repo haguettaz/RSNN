@@ -9,79 +9,68 @@ from rsnn.network.network import Network
 from rsnn.neuron.neuron import Neuron
 from rsnn.spike_train.measure import (multi_channel_correlation,
                                       single_channel_correlation)
-from rsnn.spike_train.sampler import sample_spike_trains
+from rsnn.spike_train.sampler import (sample_jittered_spike_train,
+                                      sample_spike_trains)
 from rsnn.spike_train.utils import (check_refractoriness,
                                     check_refractoriness_periodicity)
 from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
-FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
-DELAY_MIN = 0.1  # in tau_0
+NUM_NEURONS = 200
+NUM_INPUTS = 500
 
 PERIOD = 50  # in tau_0
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
+DELAY_MIN = 0.1  # in tau_0
+DELAY_MAX = 10  # in tau_0
+
+SLOPE_MIN = 2
+WEIGHT_BOUND = 0.2
+WEIGHT_REGULARIZATION = "l2"
+
+DT = 0.01
+
 NUM_PATTERNS = 2
 SCHEDULE = [
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"pattern_ctrl":1, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":1, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":1, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"pattern_ctrl":0, "num_ctrl_neurons":50, "std_ctrl":0.05, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    {"num_ctrl_neurons":0, "std_threshold": 0.1},
-    ]
+    {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"pattern_ctrl": 1, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 1, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 1, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    # {"pattern_ctrl": 0, "num_ctrl_neurons": 150, "std_ctrl": 0.1, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+    {"num_ctrl_neurons": 0, "std_threshold": 0.1},
+]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
     parser.add_argument("--exp_idx", type=int)
-    parser.add_argument("--num_inputs", type=int, default=400)
-    parser.add_argument("--num_neurons", type=int, default=100)
-    parser.add_argument("--delay_max", type=int, default=10)
-    parser.add_argument("--slope_min", type=int, default=2)
-    parser.add_argument("--weight_bound", type=int, default=20)  # in %
-    parser.add_argument("--l1", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--l2", action=argparse.BooleanOptionalAction, default=True)
 
     args = parser.parse_args()
 
     print(args)
 
-    if args.l1:
-        weight_regularization = "l1"
-        exp_dir = os.path.join(
-            "data",
-            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1",
-            f"exp_{args.exp_idx}",
-        )
-    elif args.l2:
-        weight_regularization = "l2"
-        exp_dir = os.path.join(
-            "data",
-            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2",
-            f"exp_{args.exp_idx}",
-        )
-    else:
-        weight_regularization = None
-        exp_dir = os.path.join(
-            "data",
-            f"{args.num_neurons}_{args.num_inputs}_{args.delay_max}_{args.slope_min}_{args.weight_bound}",
-            f"exp_{args.exp_idx}",
-        )
+    exp_dir = os.path.join("data", f"exp_{args.exp_idx}")
 
     if os.path.exists(os.path.join(exp_dir, "results.csv")):
-        print(f"Experiment already exists at", os.path.join(exp_dir, "results.csv"), flush=True)
+        print(
+            f"Experiment already exists at",
+            os.path.join(exp_dir, "results.csv"),
+            flush=True,
+        )
         exit(0)
+
+    rng = np.random.default_rng(seed=args.exp_idx)
 
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
@@ -89,11 +78,22 @@ if __name__ == "__main__":
 
     if os.path.exists(os.path.join(exp_dir, "spike_trains.pkl")):
         spike_trains = load_object_from_file(os.path.join(exp_dir, "spike_trains.pkl"))
-        print(f"Loaded spike trains from", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
+        print(
+            f"Loaded spike trains from",
+            os.path.join(exp_dir, "spike_trains.pkl"),
+            flush=True,
+        )
     else:
-        spike_trains = [sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons) for _ in range(NUM_PATTERNS)]
+        spike_trains = [
+            sample_spike_trains(PERIOD, FIRING_RATE, NUM_NEURONS, rng=rng)
+            for _ in range(NUM_PATTERNS)
+        ]
         save_object_to_file(spike_trains, os.path.join(exp_dir, "spike_trains.pkl"))
-        print(f"Spike trains saved at", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
+        print(
+            f"Spike trains saved at",
+            os.path.join(exp_dir, "spike_trains.pkl"),
+            flush=True,
+        )
 
     for spike_train in spike_trains:
         for firing_times in spike_train:
@@ -113,22 +113,28 @@ if __name__ == "__main__":
             [
                 Neuron(
                     neuron_idx,
-                    args.num_inputs,
-                    sources=np.random.choice(args.num_neurons, args.num_inputs),
-                    delays=np.random.uniform(low=DELAY_MIN, high=args.delay_max, size=args.num_inputs),
+                    NUM_INPUTS,
+                    sources=rng.choice(NUM_NEURONS, NUM_INPUTS),
+                    delays=rng.uniform(low=DELAY_MIN, high=DELAY_MAX, size=NUM_INPUTS),
                 )
-                for neuron_idx in range(args.num_neurons)
+                for neuron_idx in range(NUM_NEURONS)
             ]
         )
 
         for neuron in tqdm(network.neurons):
             neuron.optimize_weights_many(
                 [fts[neuron.idx] for fts in spike_trains],
-                [[(fts[s] + d).reshape(-1) for s, d in zip(neuron.sources, neuron.delays)] for fts in spike_trains],
+                [
+                    [
+                        (fts[s] + d).reshape(-1)
+                        for s, d in zip(neuron.sources, neuron.delays)
+                    ]
+                    for fts in spike_trains
+                ],
                 PERIOD,
-                slope_min=args.slope_min,
-                weight_bound=args.weight_bound / 100,
-                weight_regularization=weight_regularization,
+                slope_min=SLOPE_MIN,
+                weight_bound=WEIGHT_BOUND,
+                weight_regularization=WEIGHT_REGULARIZATION,
             )
 
             if neuron.status != "optimal":
@@ -139,22 +145,43 @@ if __name__ == "__main__":
 
     # Empirical associative recall
     list_of_dict = []
-    init_spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons)
+    init_spike_trains = [np.array([])] * NUM_NEURONS
 
     for neuron in network.neurons:
         neuron.firing_times = init_spike_trains[neuron.idx] - PERIOD
         neuron.firing_threshold = None
 
-    for i, prog in enumerate(SCHEDULE): 
+    for i, prog in enumerate(SCHEDULE):
         # set controllable neurons
         if prog["num_ctrl_neurons"] > 0:
             for neuron in network.neurons[-prog["num_ctrl_neurons"] :]:
+                # sample jittered spike trains
+                try:
+                    jittered_spike_train = sample_jittered_spike_train(
+                        spike_trains[prog["pattern_ctrl"]][neuron.idx] + i * PERIOD,
+                        prog["std_ctrl"],
+                        # i*PERIOD,
+                        np.max(neuron.firing_times, initial=i * PERIOD - 1) + 1,
+                        (i + 1) * PERIOD,
+                        rng=rng,
+                    )
+                except ValueError:
+                    print(f"tmin: {np.max(neuron.firing_times, initial=i * PERIOD - 1) + 1} and tmax: {(i + 1) * PERIOD}")
+                    print(f"spike_train: {spike_trains[prog['pattern_ctrl']][neuron.idx] + i * PERIOD}")
+                    raise ValueError
                 neuron.firing_times = np.concatenate(
-                    [neuron.firing_times, np.random.normal(spike_trains[prog["pattern_ctrl"]][neuron.idx] + i*PERIOD, prog["std_ctrl"] / 100)]
+                    [neuron.firing_times, jittered_spike_train]
                 )
                 neuron.firing_threshold = None
 
-        network.sim(i * PERIOD, PERIOD, 0.01, prog["std_threshold"], range(args.num_neurons - prog["num_ctrl_neurons"]))
+        network.sim(
+            i * PERIOD,
+            PERIOD,
+            DT,
+            prog["std_threshold"],
+            range(NUM_NEURONS - prog["num_ctrl_neurons"]),
+            rng=rng,
+        )
 
         for j in range(NUM_PATTERNS):
             precision, recall = multi_channel_correlation(
@@ -166,19 +193,20 @@ if __name__ == "__main__":
             list_of_dict.append(
                 {
                     "exp_idx": args.exp_idx,
-                    "num_inputs": args.num_inputs,
-                    "num_neurons": args.num_neurons,
-                    "delay_max": args.delay_max,
-                    "slope_min": args.slope_min,
-                    "weight_bound": args.weight_bound / 100,
-                    "weight_regularization": weight_regularization,
+                    "num_inputs": NUM_INPUTS,
+                    "num_neurons": NUM_NEURONS,
+                    "delay_max": DELAY_MAX,
+                    "slope_min": SLOPE_MIN,
+                    "weight_bound": WEIGHT_BOUND,
+                    "weight_regularization": WEIGHT_REGULARIZATION,
                     "cycle": i,
-                    "pattern":j,
+                    "pattern": j,
                     "precision": precision,
                     "recall": recall,
                     "type": "all",
                 }
             )
+            print(f"Cycle {i}, Pattern {j}, Precision {precision}, Recall {recall}", flush=True)
 
             # precision, recall = multi_channel_correlation(
             #     [spike_trains[j][neuron.idx] for neuron in network.neurons[-prog["num_ctrl_neurons"] :]],
@@ -189,11 +217,11 @@ if __name__ == "__main__":
             # list_of_dict.append(
             #     {
             #         "exp_idx": args.exp_idx,
-            #         "num_inputs": args.num_inputs,
-            #         "num_neurons": args.num_neurons,
-            #         "delay_max": args.delay_max,
-            #         "slope_min": args.slope_min,
-            #         "weight_bound": args.weight_bound / 100,
+            #         "num_inputs": NUM_INPUTS,
+            #         "num_neurons": NUM_NEURONS,
+            #         "delay_max": DELAY_MAX,
+            #         "slope_min": SLOPE_MIN,
+            #         "weight_bound": WEIGHT_BOUND,
             #         "weight_regularization": weight_regularization,
             #         "cycle": i,
             #         "pattern":j,
@@ -212,11 +240,11 @@ if __name__ == "__main__":
             # list_of_dict.append(
             #     {
             #         "exp_idx": args.exp_idx,
-            #         "num_inputs": args.num_inputs,
-            #         "num_neurons": args.num_neurons,
-            #         "delay_max": args.delay_max,
-            #         "slope_min": args.slope_min,
-            #         "weight_bound": args.weight_bound / 100,
+            #         "num_inputs": NUM_INPUTS,
+            #         "num_neurons": NUM_NEURONS,
+            #         "delay_max": DELAY_MAX,
+            #         "slope_min": SLOPE_MIN,
+            #         "weight_bound": WEIGHT_BOUND,
             #         "weight_regularization": weight_regularization,
             #         "cycle": i,
             #         "pattern":j,
@@ -228,8 +256,10 @@ if __name__ == "__main__":
 
             for neuron in network.neurons:
                 if not check_refractoriness(neuron.firing_times):
-                    raise ValueError(f"Refractory condition violated for neuron {neuron.idx}!")
-                
+                    raise ValueError(
+                        f"Refractory condition violated for neuron {neuron.idx}!"
+                    )
+
                 precision, recall = single_channel_correlation(
                     spike_trains[j][neuron.idx],
                     neuron.firing_times,
@@ -239,18 +269,22 @@ if __name__ == "__main__":
                 list_of_dict.append(
                     {
                         "exp_idx": args.exp_idx,
-                        "num_inputs": args.num_inputs,
-                        "num_neurons": args.num_neurons,
-                        "delay_max": args.delay_max,
-                        "slope_min": args.slope_min,
-                        "weight_bound": args.weight_bound / 100,
-                        "weight_regularization": weight_regularization,
+                        "num_inputs": NUM_INPUTS,
+                        "num_neurons": NUM_NEURONS,
+                        "delay_max": DELAY_MAX,
+                        "slope_min": SLOPE_MIN,
+                        "weight_bound": WEIGHT_BOUND,
+                        "weight_regularization": WEIGHT_REGULARIZATION,
                         "cycle": i,
-                        "pattern":j,
+                        "pattern": j,
                         "precision": precision,
                         "recall": recall,
                         "idx": neuron.idx,
-                        "type": "ctrl" if neuron.idx >= args.num_neurons - prog["num_ctrl_neurons"] else "auto",
+                        "type": (
+                            "ctrl"
+                            if neuron.idx >= NUM_NEURONS - prog["num_ctrl_neurons"]
+                            else "auto"
+                        ),
                     }
                 )
 

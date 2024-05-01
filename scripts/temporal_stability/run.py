@@ -14,7 +14,6 @@ from rsnn.utils.utils import load_object_from_file, save_object_to_file
 
 NUM_INPUTS = 500
 
-PERIOD = 50 # in tau_0
 FIRING_RATE = 0.2  # in number of spikes / tau_0 (outside guard period)
 
 DELAY_MIN = 0.1  # in tau_0
@@ -25,6 +24,7 @@ DT = 0.01
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Temporal Stability Simulation")
     parser.add_argument("--exp_idx", type=int)
+    parser.add_argument("--period", type=int, default=50)
     parser.add_argument("--num_neurons", type=int, default=200)
     parser.add_argument("--delay_max", type=int, default=10)
     parser.add_argument("--slope_min", type=int, default=2)
@@ -40,13 +40,13 @@ if __name__ == "__main__":
 
     if args.l1:
         weight_regularization = "l1"
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.period}_{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l1",f"exp_{args.exp_idx}")
     elif args.l2:
         weight_regularization = "l2"
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.period}_{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}_l2",f"exp_{args.exp_idx}")
     else:
         weight_regularization = None
-        exp_dir = os.path.join("data", f"{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}",f"exp_{args.exp_idx}")
+        exp_dir = os.path.join("data", f"{args.period}_{args.num_neurons}_{args.delay_max}_{args.slope_min}_{args.weight_bound}",f"exp_{args.exp_idx}")
         
     if os.path.exists(os.path.join(exp_dir, "results.csv")):
         print(f"Experiment already exists at",  os.path.join(exp_dir, "results.csv"), flush=True)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         spike_trains = load_object_from_file(os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Loaded spike trains from", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
     else:
-        spike_trains = sample_spike_trains(PERIOD, FIRING_RATE, args.num_neurons, rng)
+        spike_trains = sample_spike_trains(args.period, FIRING_RATE, args.num_neurons, rng)
         save_object_to_file(spike_trains, os.path.join(exp_dir, "spike_trains.pkl"))
         print(f"Spike trains saved at", os.path.join(exp_dir, "spike_trains.pkl"), flush=True)
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
             neuron.optimize_weights(
                 spike_trains[neuron.idx], 
                 [(spike_trains[s] + d).reshape(-1) for s, d in zip(neuron.sources, neuron.delays)], 
-                PERIOD, 
+                args.period, 
                 slope_min=args.slope_min,
                 weight_bound=args.weight_bound/100,
                 weight_regularization=weight_regularization
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         print(f"Network saved at", os.path.join(exp_dir, "network.pkl"), flush=True)
 
     # Analytical temporal stability
-    mod_phis = np.sort(np.abs(get_phis(network.neurons, spike_trains, PERIOD)))
+    mod_phis = np.sort(np.abs(get_phis(network.neurons, spike_trains, args.period)))
     print("top 5 mod phis:", mod_phis[-5:])
     # save_object_to_file(network, os.path.join(exp_dir, f"network.pkl"))
     # print(f"Network saved at", os.path.join(exp_dir, f"network.pkl"), flush=True)
@@ -119,14 +119,14 @@ if __name__ == "__main__":
 
         for neuron in network.neurons:
             # perfect initialization
-            neuron.firing_times = spike_trains[neuron.idx] - PERIOD
+            neuron.firing_times = spike_trains[neuron.idx] - args.period
             neuron.firing_threshold = None
 
         precision, recall = multi_channel_correlation(
                             [spike_trains[neuron.idx] for neuron in network.neurons],
                             [neuron.firing_times for neuron in network.neurons],
-                            -PERIOD,
-                            PERIOD,
+                            -args.period,
+                            args.period,
                         )
         
         print(f"cycle: -1, precision: {precision}, recall: {recall}", flush=True)
@@ -144,13 +144,13 @@ if __name__ == "__main__":
         )
 
         for i in range(NUM_CYCLES):
-            network.sim(i*PERIOD, PERIOD, DT, std_threshold, rng=rng)
+            network.sim(i*args.period, args.period, DT, std_threshold, rng=rng)
         
             precision, recall = multi_channel_correlation(
                             [spike_trains[neuron.idx] for neuron in network.neurons],
                             [neuron.firing_times for neuron in network.neurons],
-                            i * PERIOD,
-                            PERIOD,
+                            i * args.period,
+                            args.period,
                         )
             print(f"cycle: {i}, precision: {precision}, recall: {recall}", flush=True)
             

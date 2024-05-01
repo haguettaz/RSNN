@@ -27,11 +27,11 @@ if __name__ == "__main__":
             print(f"Loaded {os.path.join('data', batch_dir, exp_dir, 'results.csv')}", flush=True)
 
             params = batch_dir.split("_")
-            df["num_neurons"] = int(params[0])
-            df["num_inputs"] = int(params[1])
+            df["period"] = int(params[0])
+            df["num_neurons"] = int(params[1])
             df["delay_max"] = int(params[2])
             df["slope_min"] = int(params[3])
-            df["weight_bound"] = int(params[4])/100
+            df["weight_bound"] = int(params[4])
             if "l1" in params:
                 df["weight_regularization"] = "l1"
             elif "l2" in params:
