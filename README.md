@@ -1,4 +1,4 @@
-# Towards Associative Recall in a Recurrent Network of Spiking Neurons
+# Recurrent Spiking Neural Networks
 
 *"Et tout d'un coup le souvenir m'est apparu."* - Marcel Proust, *Du côté de chez Swann*
 
@@ -29,4 +29,6 @@ with $y_{\ell, k} (t) \triangleq (h_{\ell, k} * x_{i_{\ell, k}})(t)$, and, a spi
 ## Scripts
 
 ## References
+
+[1] H. Aguettaz and H.-A. Loeliger, "Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains", arXiv, 2004 
 
