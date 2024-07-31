@@ -5,14 +5,14 @@ from scipy.optimize import brentq
 from scipy.special import lambertw
 from tqdm.autonotebook import tqdm
 
-from ..neuron.neuron import Neuron
+from .neuron import Neuron
 
 
 class Network:
     """A class representing a spiking neural network.
 
     Attributes:
-        neurons (List[Neuron]): The list of neurons in the network.
+        neurons (List[Neuron]): The list of neurons composing the network.
         num_neurons (int): The number of neurons in the network.
 
     Methods:
@@ -23,12 +23,7 @@ class Network:
         """Initialize a `Network` object with a list of `Neuron` objects.
 
         Args:
-            num_neurons (int): The number of neurons.
-            firing_threshold (optional, float): The firing threshold in [theta]. Defaults to None.
-            soma_decay (optional, float): The somatic impulse response beta in [ms]. Defaults to None.
-            num_synapses (int): The number of (input) synapses per neuron.
-            synapse_beta (float): The synaptic impulse response beta in [ms].
-            synapse_delay_lim (Tuple[float, float]): The synaptic delay range in [ms].
+            neurons (int): the list of neurons composing the network.
         """
         self.neurons = neurons
         self.num_neurons = len(neurons)
@@ -37,7 +32,7 @@ class Network:
         self,
         t0:float,
         duration: float,
-        dt: float,
+        dt: Optional[float]=1e-2,
         std_threshold: Optional[float]=0.0,
         sim_indices: Optional[Iterable[int]]=None,
         tol: Optional[float] = 1e-4,
@@ -46,16 +41,17 @@ class Network:
         """Simulate the network on a given time range.
 
         Args:
-            tmax (float): time range upper bound in [ms].
-            dt (float): time step in [ms].
+            t0 (float): starting time of the simulation (in tau_min).
+            duration (float): duration of the simulation (in tau_min).
+            dt (float, optional): time step in (in tau_min). Defaults to 1e-2.
             std_threshold (float, optional): firing threshold nominal value standard deviation. Defaults to 0.0.
             sim_indices (list of int, optional): indices of neurons to simulate. Defaults to None, meaning all neurons.
             tol (float, optional): tolerance for negligible contribution. Defaults to 1e-4.
+            rng (np.random.Generator, optional): random number generator. Defaults to None.
 
         Raises:
+            ValueError: if the input sources, delays, and weights of any neuron are not specified.
             ValueError: if the time step is larger than the minimum delay of any neuron.
-            ValueError: if the effect of the (worst) nmax-th latest spike is not negligible.
-            ValueError: if the number of spikes of any neuron is larger than nmax, at the initialization.
         """
 
         if sim_indices is None:
@@ -64,9 +60,19 @@ class Network:
             sim_neurons = [self.neurons[i] for i in sim_indices]
 
         for neuron in sim_neurons:
+            if neuron.sources is None:
+                raise ValueError("The input sources of all neurons must be specified.")
+            if neuron.delays is None:
+                raise ValueError("The transmission delays of all neurons must be specified.")
+            if neuron.weights is None:
+                raise ValueError("The synaptic weights of all neurons must be specified.")
             if dt > np.min(neuron.delays):
                 raise ValueError("The simulation time step must be smaller than the minimum delay.")
         
+        for neuron in self.neurons:
+            if neuron.firing_times is None:
+                neuron.firing_times = np.array([])
+
         if rng is None:
             rng = np.random.default_rng()
 

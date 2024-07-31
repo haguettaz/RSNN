@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import sparse
-from tqdm import trange
+from tqdm.autonotebook import trange
 
 
 def get_phis(neurons, firing_times, period):

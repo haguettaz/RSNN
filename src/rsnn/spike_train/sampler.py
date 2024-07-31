@@ -2,9 +2,8 @@ from typing import List, Optional, Union
 
 import numpy as np
 from scipy.stats import truncnorm
-from tqdm import trange
 
-from .utils import check_refractoriness, pmf_num_spikes
+from .utils import pmf_num_spikes
 
 
 def sample_spike_trains(
@@ -59,7 +58,7 @@ def sample_spike_trains(
         # transform the effective poisson process into a periodic spike train ...
         return np.sort(ts % period)
 
-    for _ in trange(num_channels):
+    for _ in range(num_channels):
         # sample the number of spikes in [0, period)
         n = rng.choice(ns, p=pns)
         if n == 0:
@@ -76,7 +75,7 @@ def sample_spike_trains(
 
 def sample_jittered_spike_train(
     spike_train: np.ndarray,
-    sigma: float,
+    std_jitter: float,
     tmin: Optional[float] = None,
     tmax: Optional[float] = None,
     niter: Optional[int] = 1000,
@@ -88,7 +87,7 @@ def sample_jittered_spike_train(
 
     Args:
         spike_train (np.ndarray): the nominal firing locations
-        sigma (float): the standard deviation of the Gaussian noise.
+        std_jitter (float): the standard deviation of the Gaussian jitter noise.
         tmin (float, optional): the lower bound of the time range. Defaults to None.
         tmax (float, optional): the upper bound of the time range. Defaults to None.
         niter (int, optional): the maximum number of iterations. Defaults to 1000.
@@ -111,10 +110,10 @@ def sample_jittered_spike_train(
         tmax = np.inf
 
     sampler = lambda a_, b_, loc_: truncnorm.rvs(
-        (a_ - loc_) / sigma,
-        (b_ - loc_) / sigma,
+        (a_ - loc_) / std_jitter,
+        (b_ - loc_) / std_jitter,
         loc=loc_,
-        scale=sigma,
+        scale=std_jitter,
         random_state=rng,
     )
 
@@ -134,7 +133,7 @@ def sample_jittered_spike_train(
     if np.isfinite(tmax):
         prev_s = np.minimum(prev_s, tmax - np.arange(n - 1, -1, -1) - 1e-3)
 
-    for _ in trange(1, niter):
+    for _ in range(1, niter):
         # fix odd indices and sample the even ones
         s[0] = sampler(tmin, prev_s[1] - 1, spike_train[0])
         if n_is_odd:

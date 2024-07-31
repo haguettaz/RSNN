@@ -9,7 +9,7 @@ Each neuron continuously processes $K$ incoming signals and outputs a spike trai
 
 ### :book: Storing Spike Trains
 
-Given one (or many) $L$-channels spike trains to store (and reproduce later on), we turn the weights' learning task into a convex optimization problem.
+Given one (or many) $L$-channels spike trains to store (and to reproduce later on), we turn the weights' learning task into a convex optimization problem.
 The storage capacity (in duration of memories) per synapse appears to be non-vanishing.
 
 ### :link: Associative Recall
@@ -40,9 +40,11 @@ To the best of our knowledge, we are the first to explicitly demonstrate associa
     python -m pip install -e RSNN
     ```
 
-## Tutorials
+## How to Use
 
-:hourglass_flowing_sand: Work in progress...
+<!-- :hourglass_flowing_sand: Work in progress... -->
+A tutorial to start using the package is accessible [here](notebooks/how_to.ipynb).
+It also gives a brief tour of the main results in [1].
 
 ## References
 

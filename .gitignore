@@ -6,8 +6,6 @@ __pycache__/
 # Visual Studio files
 .vscode/
 
-# Notebook data
-notebooks/data/
 
 # C extensions
 *.so
