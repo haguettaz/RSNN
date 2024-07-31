@@ -4,31 +4,47 @@
 
 ### :boom: Spiking Neural Network
 
-We consider a network of $L$ spiking neurons, each neuron receives $K$ input signals from the other neurons.
-The $\ell$-th neuron has potential
+We consider recurrent neural networks comprising $L$ spiking neurons.
+Each neuron continuously processes $K$ incoming signals and outputs a spike train in return.
 
-$$
-    z_{\ell}(t) = \sum_{k=1}^K w_{\ell,k} y_{\ell, k} (t),
-$$
+### :book: Storing Spike Trains
 
-with $y_{\ell, k} (t) \triangleq (h_{\ell, k} * x_{i_{\ell, k}})(t)$, and, a spike is produced whenever this potential is above some firing threshold $\theta(t) > 0$.
-
-### :clock9: Precise and Robust Timing
+Given one (or many) $L$-channels spike trains to store (and reproduce later on), we turn the weights' learning task into a convex optimization problem.
+The storage capacity (in duration of memories) per synapse appears to be non-vanishing.
 
 ### :link: Associative Recall
 
+Despite working in continuous time, without a clock, and with imprecise and noisy neurons, our networks can store and recall prescribed spike trains (i.e., memories) with high temporal stability.
+Up to our knowledge, we are the first to explicitly demonstrate associative recall of memorized spike trains in continuous-time and in a noisy environment.
+
 ## Installation
 
-## Notebooks
+1. Optionally, create and activate a virtual environment.
+    ```sh
+    python -m venv rsnn
+    source rsnn/bin/activate
+    ```
+    or 
+    ```sh
+    conda create -n rsnn
+    conda activate rsnn
+    ```
 
-- spike trains
-- neural network
-- optimization
-- simulation
+2. Clone this repository.
+    ```sh
+    git clone https://github.com/haguettaz/RSNN.git
+    ```
 
-## Scripts
+3. Install the RSNN package and its dependencies.
+    ```sh
+    python -m pip install -e RSNN
+    ```
+
+## Tutorials
+
+:hourglass_flowing_sand: Work in progress...
 
 ## References
 
-[1] H. Aguettaz and H.-A. Loeliger, "Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains", arXiv, 2004 
+[1] H. Aguettaz and H.-A. Loeliger, *"Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains"*, arXiv, 2004 
 
