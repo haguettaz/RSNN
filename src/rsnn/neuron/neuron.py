@@ -1,7 +1,7 @@
 import os
 import pickle
 import random
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # import cvxpy as cp
 import gurobipy as gp
@@ -114,7 +114,7 @@ class Neuron:
         firing_area: Optional[float] = 0.2,
         margin_min: Optional[float] = 1.0,
         slope_min: Optional[float] = 2.0, # 0.5 
-        weight_bound: Optional[float] = 0.2,
+        weight_bound: Optional[Union[float, np.ndarray]] = 0.2,
         weight_regularization: Optional[str] = None,
         weight_quantization: Optional[int] = None,
         sampling_res: Optional[float] = 5e-2,

@@ -39,13 +39,13 @@ def single_channel_correlation(nominal_spike_train: np.ndarray, spike_train: np.
     if tmp_firing_times.size > 0 and nominal_spike_train.size == 0:
         if return_min:
             return 0.0
-        return 0.0, 1.0
+        return 0.0, np.nan
 
     # Bad recall and good precision for empty spike train
     if tmp_firing_times.size == 0 and nominal_spike_train.size > 0:
         if return_min:
             return 0.0
-        return 1.0, 0.0
+        return np.nan, 0.0
 
     # Perfect precision and recall for empty spike trains
     if tmp_firing_times.size == 0 and nominal_spike_train.size == 0:
@@ -119,11 +119,11 @@ def multi_channel_correlation(
     if sum(fts.size for fts in nominal_spike_trains) == 0 and sum(fts.size for fts in tmp_spike_trains) > 0:
         if return_min:
             return 0.0
-        return 0.0, 1.0
+        return 0.0, np.nan
     if sum(fts.size for fts in nominal_spike_trains) > 0 and sum(fts.size for fts in tmp_spike_trains) == 0:
         if return_min:
             return 0.0
-        return 1.0, 0.0
+        return np.nan, 0.0
 
     precision = np.zeros_like(lags)
     recall = np.zeros_like(lags)
@@ -135,14 +135,8 @@ def multi_channel_correlation(
             recall += 1.0  # contribute to every lag
             continue
 
-        # Bad precision
-        if nominal_spike_train.size == 0 and spike_train.size > 0:
-            recall += 1.0
-            continue
-
-        # Bad recall
-        if nominal_spike_train.size > 0 and spike_train.size == 0:
-            precision += 1.0
+        # Bad precision or bad recall, both contribute by 0.0
+        if nominal_spike_train.size == 0 or spike_train.size == 0:
             continue
 
         corr = kernel(dist_mod(spike_train[None, :, None] - lags[None, None, :], nominal_spike_train[:, None, None], period)).sum(axis=(0, 1))
