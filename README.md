@@ -15,7 +15,7 @@ The storage capacity (in duration of memories) per synapse appears to be non-van
 ### :link: Associative Recall
 
 Despite working in continuous time, without a clock, and with imprecise and noisy neurons, our networks can store and recall prescribed spike trains (i.e., memories) with high temporal stability.
-Up to our knowledge, we are the first to explicitly demonstrate associative recall of memorized spike trains in continuous-time and in a noisy environment.
+To the best of our knowledge, we are the first to explicitly demonstrate associative recall of memorized spike trains in continuous time.
 
 ## Installation
 
@@ -46,5 +46,5 @@ Up to our knowledge, we are the first to explicitly demonstrate associative reca
 
 ## References
 
-[1] H. Aguettaz and H.-A. Loeliger, *"Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains"*, arXiv, 2004 
+[1] H. Aguettaz and H.-A. Loeliger, *"Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains"*, arXiv, 2024 
 
