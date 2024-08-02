@@ -43,10 +43,14 @@ To the best of our knowledge, we are the first to explicitly demonstrate associa
 ## How to Use
 
 <!-- :hourglass_flowing_sand: Work in progress... -->
-A tutorial to start using the package is accessible [here](notebooks/how_to.ipynb).
-It also gives a brief tour of the main results in [1].
+A tutorial to start using the package is accessible [here](notebooks/how-to.ipynb).
+<!-- It also gives a brief tour of the main results in [1]. -->
 
-## References
+## Publications
 
-[1] H. Aguettaz and H.-A. Loeliger, *"Continuous-Time Neural Networks Can Stably Memorize Random Spike Trains"*, arXiv, 2024 
+### :hourglass_flowing_sand: Coming Soon ...
+- H. Aguettaz and H.-A. Loeliger, *"Continuous-time neural networks can stably memorize random spike trains"*, arXiv, 2024.
+
+### Prior Works
+- P. Murer, *A New Perspective on Memorization in Recurrent Networks of Spiking Neurons*. Ph.D. dissertation, No. 28166, ETH Zürich, 2022.
 
