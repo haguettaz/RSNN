@@ -48,9 +48,9 @@ A tutorial to start using the package is accessible [here](notebooks/how-to.ipyn
 
 ## Publications
 
-### :hourglass_flowing_sand: Coming Soon ...
-- H. Aguettaz and H.-A. Loeliger, *"Continuous-time neural networks can stably memorize random spike trains"*, arXiv, 2024.
+### New
+- H. Aguettaz and H.-A. Loeliger, "Continuous-time neural networks can stably memorize random spike trains," arXiv:2408.01166 [cs.Ne], Aug. 2024.
 
 ### Prior Works
 - P. Murer, *A New Perspective on Memorization in Recurrent Networks of Spiking Neurons*. Ph.D. dissertation, No. 28166, ETH Zürich, 2022.
-
+- P. Murer and H.-A. Loeliger, "Online memorization of random firing sequences by a recurrent neural network," 2020 IEEE International Symposium on Information Theory (ISIT), June 21-26, 2020.
