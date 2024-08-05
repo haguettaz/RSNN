@@ -42,8 +42,11 @@ To the best of our knowledge, we are the first to explicitly demonstrate associa
 
 ## How to Use
 
-<!-- :hourglass_flowing_sand: Work in progress... -->
-A tutorial to start using the package is accessible [here](notebooks/how-to.ipynb).
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/haguettaz/RSNN/main?labpath=notebooks%2Fhow-to.ipynb)
+
+A tutorial on how to start using the package is accessible [here](notebooks/how-to.ipynb).
+Click the binder badge to play with the notebook from your browser without installing anything.
+
 <!-- It also gives a brief tour of the main results in [1]. -->
 
 ## Publications
